@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)",
+      "Bash(./simd.exe version)",
+      "Bash(go:*)",
+      "Bash(./simd.exe init:*)",
+      "Bash(./simd.exe:*)",
+      "Bash(curl:*)",
+      "Bash(mv:*)",
+      "Bash(git remote add:*)",
+      "Bash(del \"C:\\Users\\Ad_Prod\\OneDrive\\Bureau\\Capsule\\lnterface Blockchain\\lib\\polyfills.js\")",
+      "Bash(sed:*)",
+      "Bash(robocopy:*)",
+      "Bash(xcopy:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "acceptEdits"
+  }
+}

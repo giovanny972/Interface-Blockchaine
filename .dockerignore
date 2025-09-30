@@ -1,0 +1,61 @@
+# Docker ignore pour optimiser le build de production
+
+# Dossiers de développement
+.next
+node_modules
+.git
+.gitignore
+
+# Fichiers de configuration locale
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+
+# Fichiers temporaires
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Documentation et notes
+README.md
+CHANGELOG.md
+TODO.md
+*.md
+docs/
+
+# Tests
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+coverage/
+jest.config.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts locaux
+dist/
+build/
+out/
+
+# Fichiers de développement
+.eslintrc.*
+.prettierrc.*
+.editorconfig
+tsconfig.json
+
+# Fichiers système
+.DS_Store
+.env.backup
+*.backup
+
+# Dossier production (pour éviter la récursion)
+production/

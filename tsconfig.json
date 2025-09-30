@@ -1,0 +1,88 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["dom", "dom.iterable", "es2020", "webworker"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    
+    // Configuration TypeScript strict pour sécurité maximale
+    "strict": false,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    
+    // Configuration supplémentaire pour la qualité de code
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitOverride": true,
+    "useUnknownInCatchVariables": true,
+    
+    // Configuration des modules
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    
+    // Configuration de performance
+    "incremental": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    
+    // Support pour les imports absolus et relatifs
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/types/*": ["./types/*"],
+      "@/services/*": ["./services/*"],
+      "@/stores/*": ["./stores/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/app/*": ["./app/*"],
+      "@/public/*": ["./public/*"],
+      "@/utils/*": ["./utils/*"]
+    },
+    
+    // Support pour les fonctionnalités modernes
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": false,
+    
+    // Plugin Next.js
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts", 
+    "**/*.tsx", 
+    ".next/types/**/*.ts",
+    "types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build",
+    "coverage",
+    "*.config.js"
+  ],
+  "ts-node": {
+    "esm": true
+  }
+}

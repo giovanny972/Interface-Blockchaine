@@ -1,0 +1,16 @@
+{
+  "name": "Capsule Network Interface",
+  "short_name": "Capsule",
+  "description": "Interface web moderne pour le système de capsule temporelle blockchain",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
