@@ -32,9 +32,6 @@ COPY hooks ./hooks
 COPY types ./types
 COPY public ./public
 
-# Copier le fichier .env.production s'il existe, sinon ignorer
-COPY .env.production* ./ 2>/dev/null || true
-
 # Désactiver la telemetry Next.js en production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
