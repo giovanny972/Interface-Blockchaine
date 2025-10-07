@@ -50,7 +50,7 @@ out/
 .eslintrc.*
 .prettierrc.*
 .editorconfig
-tsconfig.json
+# tsconfig.json - REQUIS pour Next.js build avec path aliases
 
 # Fichiers système
 .DS_Store
