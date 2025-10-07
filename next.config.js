@@ -7,10 +7,31 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   output: 'standalone',
+  swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: false,
+  productionBrowserSourceMaps: false,
+  optimizeFonts: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   experimental: {
-    // Disable optimizations that might cause issues
+    // Optimisations pour build plus rapide
+    optimizeCss: false,
+    workerThreads: false,
+    cpus: 1,
   },
   webpack: (config, { isServer }) => {
+    // Limiter l'utilisation mémoire
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        maxSize: 244000,
+      },
+    }
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

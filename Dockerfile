@@ -36,9 +36,12 @@ COPY public ./public
 # Variables d'environnement pour le build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Limiter l'utilisation mémoire de Node pendant le build
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Build Next.js en mode standalone (génère un serveur ultra-léger)
-RUN npm run build
+# Timeout de 10 minutes max pour le build
+RUN timeout 600 npm run build || (echo "Build timeout or failed" && exit 1)
 
 # Stage 3: Runner (image finale de production - ULTRA LÉGÈRE)
 FROM node:18-alpine AS runner
@@ -63,6 +66,10 @@ ENV HOSTNAME="0.0.0.0"
 EXPOSE 3003
 
 USER nextjs
+
+# Healthcheck pour vérifier que l'app répond
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3003/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Démarrage avec Node directement (plus léger que npm start)
 # Le fichier server.js est généré automatiquement par Next.js standalone

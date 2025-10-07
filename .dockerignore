@@ -4,6 +4,7 @@
 .next
 node_modules
 .git
+.github
 .gitignore
 
 # Fichiers de configuration locale
@@ -19,32 +20,41 @@ node_modules
 .DS_Store
 Thumbs.db
 
-# Documentation et notes
+# Documentation et notes (réduire la taille du contexte)
 README.md
 CHANGELOG.md
 TODO.md
 *.md
 docs/
+BUGFIX_*.md
+MIGRATION_*.md
+SECURITY_*.md
 
-# Tests
+# Tests (pas nécessaires en production)
 __tests__/
 *.test.js
 *.test.ts
+*.test.tsx
 *.spec.js
 *.spec.ts
+*.spec.tsx
 coverage/
 jest.config.js
+cypress/
+.cypress/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.suo
 
 # Build artifacts locaux
 dist/
 build/
 out/
+.turbo/
 
 # Fichiers de développement
 .eslintrc.*
@@ -59,3 +69,12 @@ out/
 
 # Dossier production (pour éviter la récursion)
 production/
+
+# Fichiers Windows
+Thumbs.db
+desktop.ini
+
+# Fichiers de backup
+*.bak
+*~
+temp-*
