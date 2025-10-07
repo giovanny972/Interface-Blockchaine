@@ -1,28 +1,29 @@
-# Dockerfile multi-stage pour Capsule Network - Dokploy optimisé
-# =======================================================
+# Dockerfile optimisé pour Capsule Network - Production Dokploy
+# =================================================================
+# Build ultra-léger avec Next.js standalone pour économiser ressources serveur
 
-# Stage 1: Base avec Node.js
-FROM node:18-alpine AS base
+# Stage 1: Dependencies (installation uniquement)
+FROM node:18-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Stage 2: Dependencies
-FROM base AS deps
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm cache clean --force
+
+# Stage 2: Builder (build de l'application)
+FROM node:18-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Installer TOUTES les dépendances (dev inclus) pour le build
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
-# Stage 3: Builder
-FROM base AS builder
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+# Copier les fichiers de configuration
+COPY tsconfig.json next.config.js postcss.config.js tailwind.config.js ./
 
-# Copier les fichiers de configuration nécessaires pour le build
-COPY tsconfig.json ./
-COPY next.config.js ./
-COPY postcss.config.js ./
-COPY tailwind.config.js ./
-
-# Copier tout le code source
+# Copier le code source
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
@@ -32,29 +33,26 @@ COPY hooks ./hooks
 COPY types ./types
 COPY public ./public
 
-# Désactiver la telemetry Next.js en production
+# Variables d'environnement pour le build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build optimisé pour production
+# Build Next.js en mode standalone (génère un serveur ultra-léger)
 RUN npm run build
 
-# Stage 4: Runner (Production)
-FROM base AS runner
+# Stage 3: Runner (image finale de production - ULTRA LÉGÈRE)
+FROM node:18-alpine AS runner
 WORKDIR /app
 
-# Créer un utilisateur non-root pour la sécurité
+# Créer utilisateur non-root
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copier les fichiers nécessaires depuis builder
-COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copier les assets buildés avec les bonnes permissions
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+# Copier UNIQUEMENT les fichiers nécessaires pour la production
+# Le mode standalone contient déjà tout ce qu'il faut
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Variables d'environnement production
 ENV NODE_ENV=production
@@ -62,20 +60,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3003
 ENV HOSTNAME="0.0.0.0"
 
-# Exposer le port 3003 pour Dokploy
 EXPOSE 3003
 
-# Donner les permissions appropriées
-RUN chown -R nextjs:nodejs /app && \
-    chmod -R 755 /app
-
-# Utiliser l'utilisateur non-root
 USER nextjs
 
-# Commande de démarrage
-CMD ["npm", "start"]
+# Démarrage avec Node directement (plus léger que npm start)
+# Le fichier server.js est généré automatiquement par Next.js standalone
+CMD ["node", "server.js"]
 
 # Metadata
 LABEL maintainer="Capsule Network Team"
-LABEL version="1.0.0"
-LABEL description="Capsule Network - Interface Blockchain Production (Dokploy)"
+LABEL version="2.0.0"
+LABEL description="Capsule Network - Production optimisée (Standalone)"
