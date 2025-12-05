@@ -37,7 +37,10 @@ import {
   CloudIcon,
   CpuChipIcon,
   WifiIcon,
-  SparklesIcon
+  SparklesIcon,
+  BanknotesIcon,
+  ChartPieIcon,
+  BuildingLibraryIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useCapsuleActions } from '@/hooks/useCapsuleActions'
@@ -47,12 +50,22 @@ export default function CapsuleDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const { isAuthenticated, address } = useAuth()
-  const [activeTab, setActiveTab] = useState<'overview' | 'security' | 'activity' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'security' | 'activity' | 'rwa' | 'settings'>('overview')
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [transferAddress, setTransferAddress] = useState('')
   const [isTransferring, setIsTransferring] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // RWA Tokenization states
+  const [showTokenizeModal, setShowTokenizeModal] = useState(false)
+  const [tokenizationForm, setTokenizationForm] = useState({
+    totalFractions: '1000',
+    pricePerFraction: '10',
+    assetType: 'COLLECTIBLE' as const,
+    description: ''
+  })
+  const [isTokenizing, setIsTokenizing] = useState(false)
 
   const capsuleId = params.id as string
   
@@ -123,6 +136,43 @@ export default function CapsuleDetailsPage() {
       toast.error('Erreur lors de la suppression de la capsule')
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleTokenizeCapsule = async () => {
+    if (!tokenizationForm.totalFractions || !tokenizationForm.pricePerFraction) {
+      toast.error('Veuillez remplir tous les champs obligatoires')
+      return
+    }
+
+    setIsTokenizing(true)
+    try {
+      // TODO: Intégrer avec l'API RWA blockchain
+      // const result = await rwaAPI.tokenizeAsset({
+      //   owner: address,
+      //   name: `Capsule ${capsule?.title}`,
+      //   description: tokenizationForm.description || capsule?.description,
+      //   asset_type: tokenizationForm.assetType,
+      //   value: tokenizationForm.pricePerFraction,
+      //   total_fractions: tokenizationForm.totalFractions,
+      //   metadata: JSON.stringify({
+      //     capsule_id: capsuleId,
+      //     capsule_type: capsule?.type,
+      //     ...capsule?.metadata
+      //   })
+      // })
+
+      toast.success('Capsule tokenisée avec succès!')
+      setShowTokenizeModal(false)
+      // Rafraîchir les données
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (error) {
+      console.error('Erreur tokenisation:', error)
+      toast.error('Erreur lors de la tokenisation de la capsule')
+    } finally {
+      setIsTokenizing(false)
     }
   }
 
@@ -480,6 +530,7 @@ export default function CapsuleDetailsPage() {
                   { key: 'overview', label: 'Vue d\'ensemble', icon: EyeIcon },
                   { key: 'security', label: 'Sécurité', icon: ShieldCheckIcon },
                   { key: 'activity', label: 'Activité', icon: ChartBarIcon },
+                  { key: 'rwa', label: 'Tokenisation', icon: ChartPieIcon },
                   { key: 'settings', label: 'Paramètres', icon: CogIcon }
                 ].map((tab) => (
                   <button
@@ -914,6 +965,207 @@ export default function CapsuleDetailsPage() {
                 </motion.div>
               )}
 
+              {activeTab === 'rwa' && (
+                <motion.div
+                  key="rwa"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  {/* En-tête RWA */}
+                  <div className="card bg-gradient-to-br from-emerald-900/20 to-blue-900/20 border-emerald-500/30">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <ChartPieIcon className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-bold text-white mb-2">
+                          Tokenisation RWA (Real World Assets)
+                        </h3>
+                        <p className="text-dark-300 mb-4">
+                          Transformez votre capsule en actif numérique fractionnaire échangeable sur le réseau Sirius.
+                          La tokenisation permet de diviser la propriété de votre capsule en fractions que vous pouvez vendre ou transférer.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-3 py-1 bg-emerald-900/30 text-emerald-300 rounded-full text-xs font-medium border border-emerald-500/50">
+                            Fractionnement d'actifs
+                          </span>
+                          <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-full text-xs font-medium border border-blue-500/50">
+                            Trading on-chain
+                          </span>
+                          <span className="px-3 py-1 bg-purple-900/30 text-purple-300 rounded-full text-xs font-medium border border-purple-500/50">
+                            Liquidité instantanée
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Statut de tokenisation */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="card">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-dark-400 text-sm">Statut</span>
+                        <BuildingLibraryIcon className="w-5 h-5 text-primary-400" />
+                      </div>
+                      <p className="text-2xl font-bold text-white">
+                        Non tokenisé
+                      </p>
+                      <p className="text-xs text-dark-500 mt-2">
+                        Cette capsule n'est pas encore un actif RWA
+                      </p>
+                    </div>
+
+                    <div className="card">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-dark-400 text-sm">Valeur Estimée</span>
+                        <BanknotesIcon className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <p className="text-2xl font-bold text-white">
+                        -- CAPS
+                      </p>
+                      <p className="text-xs text-dark-500 mt-2">
+                        Définissez la valeur lors de la tokenisation
+                      </p>
+                    </div>
+
+                    <div className="card">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-dark-400 text-sm">Fractions</span>
+                        <ChartPieIcon className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <p className="text-2xl font-bold text-white">
+                        0 / 0
+                      </p>
+                      <p className="text-xs text-dark-500 mt-2">
+                        Aucune fraction créée
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Guide de tokenisation */}
+                  <div className="card">
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                      <InformationCircleIcon className="w-6 h-6 mr-2 text-blue-400" />
+                      Comment fonctionne la tokenisation ?
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-4">
+                        <div className="w-10 h-10 bg-emerald-900/30 rounded-full flex items-center justify-center flex-shrink-0 border border-emerald-500/50">
+                          <span className="text-emerald-400 font-bold">1</span>
+                        </div>
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Définir les paramètres</h5>
+                          <p className="text-dark-300 text-sm">
+                            Choisissez le nombre total de fractions et le prix par fraction.
+                            Ces paramètres déterminent la valeur totale et la liquidité de votre actif.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-4">
+                        <div className="w-10 h-10 bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0 border border-blue-500/50">
+                          <span className="text-blue-400 font-bold">2</span>
+                        </div>
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Création on-chain</h5>
+                          <p className="text-dark-300 text-sm">
+                            Une transaction blockchain enregistre votre actif dans le module RWA.
+                            Vos fractions sont mintées et apparaissent dans votre portefeuille.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-4">
+                        <div className="w-10 h-10 bg-purple-900/30 rounded-full flex items-center justify-center flex-shrink-0 border border-purple-500/50">
+                          <span className="text-purple-400 font-bold">3</span>
+                        </div>
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Trading et transfert</h5>
+                          <p className="text-dark-300 text-sm">
+                            Les fractions peuvent être vendues, achetées ou transférées librement.
+                            Le propriétaire majoritaire conserve le contrôle de la capsule.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bouton de tokenisation */}
+                  <div className="card bg-gradient-to-br from-emerald-900/10 to-blue-900/10 border-emerald-500/20">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <SparklesIcon className="w-8 h-8 text-white" />
+                      </div>
+                      <h4 className="text-xl font-bold text-white mb-2">Prêt à tokeniser ?</h4>
+                      <p className="text-dark-300 mb-6 max-w-md mx-auto">
+                        Transformez votre capsule en actif fractionnaire et débloquez de nouvelles opportunités de liquidité.
+                      </p>
+                      <button
+                        onClick={() => setShowTokenizeModal(true)}
+                        className="btn-primary"
+                      >
+                        <ChartPieIcon className="w-5 h-5 mr-2" />
+                        Tokeniser cette capsule
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Avantages de la tokenisation */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="card border-emerald-500/20">
+                      <div className="flex items-start space-x-3 mb-3">
+                        <CheckCircleIcon className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Liquidité immédiate</h5>
+                          <p className="text-dark-300 text-sm">
+                            Vendez des fractions sans avoir à transférer la capsule entière
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="card border-blue-500/20">
+                      <div className="flex items-start space-x-3 mb-3">
+                        <CheckCircleIcon className="w-6 h-6 text-blue-400 flex-shrink-0" />
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Propriété fractionnaire</h5>
+                          <p className="text-dark-300 text-sm">
+                            Partagez la propriété avec plusieurs investisseurs
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="card border-purple-500/20">
+                      <div className="flex items-start space-x-3 mb-3">
+                        <CheckCircleIcon className="w-6 h-6 text-purple-400 flex-shrink-0" />
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Transparence totale</h5>
+                          <p className="text-dark-300 text-sm">
+                            Toutes les transactions sont enregistrées on-chain
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="card border-orange-500/20">
+                      <div className="flex items-start space-x-3 mb-3">
+                        <CheckCircleIcon className="w-6 h-6 text-orange-400 flex-shrink-0" />
+                        <div>
+                          <h5 className="font-semibold text-white mb-1">Valorisation dynamique</h5>
+                          <p className="text-dark-300 text-sm">
+                            Le marché détermine la valeur réelle de votre actif
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {activeTab === 'settings' && (
                 <motion.div
                   key="settings"
@@ -963,6 +1215,197 @@ export default function CapsuleDetailsPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Tokenization Modal */}
+          {showTokenizeModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-dark-800 border border-dark-600 rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-white flex items-center">
+                    <ChartPieIcon className="w-6 h-6 mr-3 text-emerald-400" />
+                    Tokeniser la Capsule
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowTokenizeModal(false)
+                      setTokenizationForm({
+                        totalFractions: '1000',
+                        pricePerFraction: '10',
+                        assetType: 'COLLECTIBLE',
+                        description: ''
+                      })
+                    }}
+                    className="text-dark-400 hover:text-white transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Information */}
+                  <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <InformationCircleIcon className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-300">
+                        <p className="font-medium mb-1">À propos de la tokenisation RWA</p>
+                        <p>
+                          La tokenisation transforme votre capsule en actif numérique divisible.
+                          Vous créez un nombre défini de fractions que vous pouvez vendre ou transférer individuellement.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Formulaire */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Type d'actif
+                      </label>
+                      <select
+                        value={tokenizationForm.assetType}
+                        onChange={(e) => setTokenizationForm({ ...tokenizationForm, assetType: e.target.value as any })}
+                        className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white focus:border-emerald-500 focus:outline-none transition-colors"
+                      >
+                        <option value="COLLECTIBLE">Collection / Art Digital</option>
+                        <option value="ARTWORK">Œuvre d'Art</option>
+                        <option value="REAL_ESTATE">Immobilier</option>
+                        <option value="VEHICLE">Véhicule</option>
+                        <option value="OTHER">Autre</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Nombre total de fractions
+                      </label>
+                      <input
+                        type="number"
+                        value={tokenizationForm.totalFractions}
+                        onChange={(e) => setTokenizationForm({ ...tokenizationForm, totalFractions: e.target.value })}
+                        placeholder="1000"
+                        min="1"
+                        className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:border-emerald-500 focus:outline-none transition-colors"
+                      />
+                      <p className="text-xs text-dark-500 mt-1">
+                        Plus le nombre est élevé, plus la liquidité sera forte
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Prix par fraction (CAPS)
+                      </label>
+                      <input
+                        type="number"
+                        value={tokenizationForm.pricePerFraction}
+                        onChange={(e) => setTokenizationForm({ ...tokenizationForm, pricePerFraction: e.target.value })}
+                        placeholder="10"
+                        min="0.01"
+                        step="0.01"
+                        className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:border-emerald-500 focus:outline-none transition-colors"
+                      />
+                      <p className="text-xs text-dark-500 mt-1">
+                        Valeur totale estimée : {(parseFloat(tokenizationForm.totalFractions) * parseFloat(tokenizationForm.pricePerFraction) || 0).toLocaleString()} CAPS
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Description (optionnelle)
+                      </label>
+                      <textarea
+                        value={tokenizationForm.description}
+                        onChange={(e) => setTokenizationForm({ ...tokenizationForm, description: e.target.value })}
+                        placeholder="Décrivez votre actif pour attirer les investisseurs..."
+                        rows={4}
+                        className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:border-emerald-500 focus:outline-none transition-colors resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Récapitulatif */}
+                  <div className="bg-emerald-900/20 border border-emerald-500/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-emerald-300 mb-3">Récapitulatif</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-dark-400">Capsule</span>
+                        <span className="text-white font-medium">{capsule?.title}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-400">Fractions totales</span>
+                        <span className="text-white font-medium">{tokenizationForm.totalFractions}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-dark-400">Prix unitaire</span>
+                        <span className="text-white font-medium">{tokenizationForm.pricePerFraction} CAPS</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-emerald-500/30">
+                        <span className="text-emerald-300 font-semibold">Valeur totale</span>
+                        <span className="text-emerald-300 font-bold">
+                          {(parseFloat(tokenizationForm.totalFractions) * parseFloat(tokenizationForm.pricePerFraction) || 0).toLocaleString()} CAPS
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Avertissement */}
+                  <div className="bg-orange-900/20 border border-orange-500/50 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <ExclamationTriangleIcon className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-orange-300">
+                        <p className="font-medium mb-1">Action irréversible</p>
+                        <p>
+                          Une fois tokenisée, la capsule devient un actif RWA on-chain.
+                          Les paramètres de fractionnement ne pourront plus être modifiés.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      onClick={() => {
+                        setShowTokenizeModal(false)
+                        setTokenizationForm({
+                          totalFractions: '1000',
+                          pricePerFraction: '10',
+                          assetType: 'COLLECTIBLE',
+                          description: ''
+                        })
+                      }}
+                      className="flex-1 py-3 px-4 bg-dark-700 text-dark-300 rounded-lg hover:bg-dark-600 transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleTokenizeCapsule}
+                      disabled={isTokenizing || !tokenizationForm.totalFractions || !tokenizationForm.pricePerFraction}
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-blue-600 text-white rounded-lg hover:from-emerald-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                    >
+                      {isTokenizing ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Tokenisation...
+                        </>
+                      ) : (
+                        <>
+                          <SparklesIcon className="w-5 h-5 mr-2" />
+                          Confirmer la Tokenisation
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
 
           {/* Transfer Modal */}
           {showTransferModal && (

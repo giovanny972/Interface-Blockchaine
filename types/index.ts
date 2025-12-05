@@ -337,3 +337,80 @@ export interface DeadMansSwitchCondition {
   max_inactivity: string // Duration
   fallback_recipients: string[]
 }
+
+// ============================================================================
+// RWA (Real World Assets) Module Types
+// ============================================================================
+
+export type RWAAssetType = 'REAL_ESTATE' | 'ARTWORK' | 'COLLECTIBLE' | 'VEHICLE' | 'OTHER'
+export type RWAAssetStatus = 'ASSET_STATUS_PENDING' | 'ASSET_STATUS_ACTIVE' | 'ASSET_STATUS_FROZEN' | 'ASSET_STATUS_RETIRED'
+
+export interface RWAAsset {
+  id: string
+  owner: string
+  name: string
+  description: string
+  asset_type: RWAAssetType
+  value: string // in micro-units
+  total_fractions: string
+  available_fractions: string
+  status: RWAAssetStatus
+  created_at: string
+  metadata: string // JSON string
+}
+
+export interface RWAFractionBalance {
+  asset_id: string
+  owner: string
+  fractions: string
+}
+
+export interface RWAAssetMetadata {
+  address?: string
+  size?: string
+  location?: string
+  year?: string
+  condition?: string
+  certification?: string
+  images?: string[]
+  documents?: string[]
+  [key: string]: any
+}
+
+// RWA Transaction Messages
+export interface MsgTokenizeAsset {
+  owner: string
+  name: string
+  description: string
+  asset_type: RWAAssetType
+  value: string
+  total_fractions: string
+  metadata: string
+}
+
+export interface MsgTransferFractions {
+  from: string
+  to: string
+  asset_id: string
+  fractions: string
+}
+
+export interface MsgUpdateAsset {
+  owner: string
+  asset_id: string
+  name?: string
+  description?: string
+  value?: string
+  metadata?: string
+}
+
+export interface MsgFreezeAsset {
+  authority: string
+  asset_id: string
+  reason: string
+}
+
+export interface MsgRetireAsset {
+  owner: string
+  asset_id: string
+}

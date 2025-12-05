@@ -10,7 +10,9 @@ import {
   DocumentMagnifyingGlassIcon,
   CogIcon,
   QuestionMarkCircleIcon,
-  PuzzlePieceIcon
+  PuzzlePieceIcon,
+  ChartPieIcon,
+  ScaleIcon
 } from '@heroicons/react/24/outline'
 
 export function QuickActions() {
@@ -49,6 +51,22 @@ export function QuickActions() {
       iconColor: 'text-white'
     },
     {
+      title: 'Tokenisation RWA',
+      description: 'Actifs fractionnés',
+      icon: ChartPieIcon,
+      href: '/rwa',
+      color: 'bg-emerald-600 hover:bg-emerald-700',
+      iconColor: 'text-white'
+    },
+    {
+      title: 'Gouvernance',
+      description: 'Voter & proposer',
+      icon: ScaleIcon,
+      href: '/governance',
+      color: 'bg-indigo-600 hover:bg-indigo-700',
+      iconColor: 'text-white'
+    },
+    {
       title: 'Marketplace',
       description: 'Applications & outils',
       icon: PuzzlePieceIcon,
@@ -77,7 +95,7 @@ export function QuickActions() {
   return (
     <div className="card">
       <h3 className="text-xl font-semibold text-white mb-6">Actions Rapides</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {actions.map((action, index) => (
           <motion.div
             key={action.title}

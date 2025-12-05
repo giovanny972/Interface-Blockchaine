@@ -22,7 +22,7 @@ export default function Navigation() {
               <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
                 <CubeIcon className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-gradient">Capsule Network</span>
+              <span className="font-bold text-xl text-gradient">Sirius Network</span>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -44,7 +44,7 @@ export default function Navigation() {
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
               <CubeIcon className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-gradient">Capsule Network</span>
+            <span className="font-bold text-xl text-gradient">Sirius Network</span>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -59,6 +59,9 @@ export default function Navigation() {
             </Link>
             <Link href="#tokenomics" className="hidden lg:block text-dark-300 hover:text-white transition-colors">
               Tokenomics
+            </Link>
+            <Link href="/governance" className="hidden lg:block text-dark-300 hover:text-white transition-colors">
+              Gouvernance
             </Link>
             <Link href="#roadmap" className="hidden md:block text-dark-300 hover:text-white transition-colors">
               Roadmap

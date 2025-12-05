@@ -1,5 +1,15 @@
 import axios from 'axios'
-import { TimeCapsule, CapsuleStats, NetworkStats, ApiResponse, PaginatedResponse, TransferHistory } from '@/types'
+import {
+  TimeCapsule,
+  CapsuleStats,
+  NetworkStats,
+  ApiResponse,
+  PaginatedResponse,
+  TransferHistory,
+  CapsuleType,
+  CapsuleStatus
+} from '@/types'
+// import { blockchainIntegration } from './api-blockchain-integration' // Temporairement désactivé
 
 class CapsuleAPI {
   private baseURL: string
@@ -7,7 +17,7 @@ class CapsuleAPI {
 
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-    this.restEndpoint = process.env.NEXT_PUBLIC_REST_ENDPOINT || 'http://localhost:1317'
+    this.restEndpoint = process.env.NEXT_PUBLIC_REST_ENDPOINT || 'http://141.95.160.10:1317'
   }
 
   // Configuration axios avec intercepteurs
@@ -36,8 +46,10 @@ class CapsuleAPI {
         // Gérer uniquement les vraies erreurs d'auth, pas les APIs non implémentées
         if (error.response?.status === 401) {
           // Token expiré, rediriger vers la connexion
-          localStorage.removeItem('capsule-auth-token')
-          window.location.href = '/auth/connect'
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('capsule-auth-token')
+            window.location.href = '/auth/connect'
+          }
         } else if (error.response?.status === 501) {
           // API non implémentée, ne pas rediriger
           console.log('API non implémentée:', error.config?.url)
@@ -54,7 +66,8 @@ class CapsuleAPI {
     // En mode développement pur, ne pas créer d'instance axios
     if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
       return {
-        get: () => Promise.reject(new Error('Mode développement - API désactivée'))
+        get: () => Promise.reject(new Error('Mode développement - API désactivée')),
+        post: () => Promise.reject(new Error('Mode développement - API désactivée'))
       }
     }
 
@@ -73,96 +86,117 @@ class CapsuleAPI {
 
   // Récupérer une capsule par ID depuis la blockchain
   async getCapsule(id: string): Promise<TimeCapsule> {
-    // En mode développement ou hybride, utiliser directement les données mock/locales
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true' || process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'hybrid') {
-      console.log('Mode développement/hybride - utilisation des données locales pour la capsule')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // Toujours essayer de récupérer depuis localStorage d'abord
-      const localCapsule = this.getLocalCapsuleById(id)
-      if (localCapsule) {
-        console.log('Capsule trouvée localement:', localCapsule.title)
-        return localCapsule
+    // Essayer d'abord de récupérer depuis la blockchain réelle
+    try {
+      console.log(`Tentative de récupération de la capsule ${id} depuis la blockchain...`)
+      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsule/${id}`, {
+        timeout: 10000 // 10 secondes de timeout
+      })
+
+      if (response.data && response.data.capsule) {
+        console.log('✅ Capsule trouvée sur la blockchain:', response.data.capsule.id)
+        return this.transformCapsuleFromChain(response.data.capsule)
       }
-      
-      return this.createMockCapsule(id)
+    } catch (error) {
+      console.warn('⚠️ Capsule non trouvée sur la blockchain:', error instanceof Error ? error.message : 'Erreur inconnue')
     }
 
-    try {
-      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsule/${id}`)
-      return this.transformCapsuleFromChain(response.data.capsule)
-    } catch (error) {
-      console.warn('API blockchain non disponible pour getCapsule, utilisation des données mock')
-      // Toujours retourner une capsule mock plutôt que d'échouer
-      return this.createMockCapsule(id)
+    // Fallback 1: Essayer localStorage en mode développement
+    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
+      const localCapsule = this.getLocalCapsuleById(id)
+      if (localCapsule) {
+        console.log('📦 Capsule trouvée dans localStorage:', localCapsule.title)
+        return localCapsule
+      }
     }
+
+    // Fallback 2: Créer une capsule mock avec des données réalistes
+    console.log('🎭 Utilisation de données mock pour la capsule', id)
+    return this.createMockCapsule(id)
   }
 
   // Récupérer une capsule publique par ID
   async getPublicCapsule(id: string): Promise<TimeCapsule> {
-    // En mode développement ou hybride, utiliser directement les données mock/locales
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true' || process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'hybrid') {
-      console.log('Mode développement/hybride - utilisation des données locales pour la capsule publique')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // En mode hybride, tenter de récupérer depuis localStorage d'abord
-      if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'hybrid') {
-        const localCapsule = this.getLocalCapsuleById(id)
-        if (localCapsule && localCapsule.isPublic) {
-          return localCapsule
-        }
+    // Essayer d'abord de récupérer depuis la blockchain
+    try {
+      console.log(`Tentative de récupération de la capsule publique ${id} depuis la blockchain...`)
+      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/public/capsule/${id}`, {
+        timeout: 10000
+      })
+      if (response.data && response.data.capsule) {
+        console.log('✅ Capsule publique trouvée sur la blockchain')
+        return this.transformCapsuleFromChain(response.data.capsule)
       }
-      
-      // Créer une capsule publique mock
-      const mockCapsule = this.createMockCapsule(id)
-      mockCapsule.isPublic = true
-      mockCapsule.visibility = 'PUBLIC'
-      return mockCapsule
+    } catch (error) {
+      console.warn('⚠️ Capsule publique non trouvée sur la blockchain')
     }
 
-    try {
-      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/public/capsule/${id}`)
-      return this.transformCapsuleFromChain(response.data.capsule)
-    } catch (error) {
-      console.warn('API blockchain non disponible pour getPublicCapsule, utilisation des données mock')
-      // Toujours retourner une capsule publique mock plutôt que d'échouer
-      const mockCapsule = this.createMockCapsule(id)
-      mockCapsule.isPublic = true
-      mockCapsule.visibility = 'PUBLIC'
-      return mockCapsule
+    // Fallback 1: localStorage (mode développement)
+    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
+      const localCapsule = this.getLocalCapsuleById(id)
+      if (localCapsule && localCapsule.isPublic) {
+        console.log('📦 Capsule publique trouvée dans localStorage')
+        return localCapsule
+      }
     }
+
+    // Fallback 2: mock data
+    console.log('🎭 Utilisation de données mock pour la capsule publique')
+    const mockCapsule = this.createMockCapsule(id)
+    mockCapsule.isPublic = true
+    mockCapsule.visibility = 'public'
+    return mockCapsule
   }
 
   // Récupérer toutes les capsules d'un utilisateur
   async getUserCapsules(address: string, page = 1, limit = 20): Promise<PaginatedResponse<TimeCapsule>> {
-    // En mode développement ou hybride, utiliser les données mock/locales
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true' || process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'hybrid') {
-      console.log('Mode développement/hybride - utilisation des données locales pour les capsules')
-      // Simulation d'un délai réseau léger
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return this.createMockUserCapsules(address, page, limit)
-    }
-
+    // Essayer d'abord de récupérer depuis la blockchain réelle
     try {
+      console.log(`Tentative de récupération des capsules pour l'utilisateur ${address}...`)
       const response = await this.cosmosAPI.get(
-        `/cosmos/timecapsule/v1/user/${address}/capsules?pagination.limit=${limit}&pagination.offset=${(page - 1) * limit}`
+        `/cosmos/timecapsule/v1/user/${address}/capsules?pagination.limit=${limit}&pagination.offset=${(page - 1) * limit}`,
+        { timeout: 10000 }
       )
-      
-      const capsules = response.data.capsules?.map(this.transformCapsuleFromChain) || []
-      
-      return {
-        items: capsules,
-        total: parseInt(response.data.pagination?.total || '0'),
-        page,
-        limit,
-        hasNext: capsules.length === limit,
-        hasPrev: page > 1,
+
+      if (response.data && response.data.capsules) {
+        const capsules = response.data.capsules.map(this.transformCapsuleFromChain)
+        console.log(`✅ ${capsules.length} capsules trouvées sur la blockchain`)
+
+        return {
+          items: capsules,
+          total: parseInt(response.data.pagination?.total || capsules.length.toString()),
+          page,
+          limit,
+          hasNext: capsules.length === limit,
+          hasPrev: page > 1,
+        }
       }
     } catch (error) {
-      console.warn('API blockchain non disponible, utilisation des données mock')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      return this.createMockUserCapsules(address, page, limit)
+      console.warn('⚠️ Capsules non trouvées sur la blockchain:', error instanceof Error ? error.message : 'Erreur inconnue')
     }
+
+    // Fallback 1: Essayer localStorage en mode développement
+    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
+      const localCapsules = this.getLocalCapsules()
+      if (localCapsules.length > 0) {
+        console.log(`📦 ${localCapsules.length} capsules trouvées dans localStorage`)
+        const start = (page - 1) * limit
+        const end = start + limit
+        return {
+          items: localCapsules.slice(start, end),
+          total: localCapsules.length,
+          page,
+          limit,
+          hasNext: end < localCapsules.length,
+          hasPrev: page > 1,
+        }
+      }
+    }
+
+    // Fallback 2: Créer des capsules mock
+    console.log('🎭 Utilisation de données mock pour les capsules utilisateur')
+    await new Promise(resolve => setTimeout(resolve, 300))
+    return this.createMockUserCapsules(address, page, limit)
   }
 
   // Récupérer l'historique des transferts d'une capsule
@@ -171,62 +205,50 @@ class CapsuleAPI {
       const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsule/${capsuleId}/transfers`)
       return response.data.transfers?.map(this.transformTransferFromChain) || []
     } catch (error) {
-      console.warn('Historique des transferts non disponible:', error.message)
+      console.warn('Historique des transferts non disponible:', error instanceof Error ? error.message : String(error))
       return []
     }
   }
 
   // Récupérer les statistiques générales
   async getStats(): Promise<CapsuleStats> {
-    // En mode développement, utiliser directement les données mock
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
-      console.log('Mode développement - utilisation des données mock pour les statistiques')
-      // Simulation d'un délai réseau léger
-      await new Promise(resolve => setTimeout(resolve, 200))
-      return {
-        totalCapsules: 156,
-        activeCapsules: 89,
-        unlockedCapsules: 67,
-        myCapsulesCount: 3,
-        totalDataStored: '2.3 GB',
-        averageUnlockTime: 30,
-        mostUsedType: 'TIME_LOCK',
-      } as CapsuleStats
-    }
-
+    // Essayer d'abord de récupérer les vraies statistiques
     try {
-      const response = await this.cosmosAPI.get('/cosmos/timecapsule/v1/stats')
-      return {
-        totalCapsules: parseInt(response.data.total_capsules || '0'),
-        activeCapsules: parseInt(response.data.active_capsules || '0'),
-        unlockedCapsules: parseInt(response.data.unlocked_capsules || '0'),
-        myCapsulesCount: 0, // Sera calculé côté client
-        totalDataStored: response.data.total_data_stored || '0 B',
-        averageUnlockTime: parseInt(response.data.average_unlock_time || '0'),
-        mostUsedType: response.data.most_used_type || 'TIME_LOCK',
+      console.log('Tentative de récupération des statistiques depuis la blockchain...')
+      const response = await this.cosmosAPI.get('/cosmos/timecapsule/v1/stats', {
+        timeout: 10000
+      })
+
+      if (response.data && response.data.stats) {
+        console.log('✅ Statistiques trouvées sur la blockchain')
+        return response.data.stats as CapsuleStats
       }
     } catch (error) {
-      console.warn('Blockchain REST API non disponible, utilisation des valeurs par défaut')
-      return {
-        totalCapsules: 156,
-        activeCapsules: 89,
-        unlockedCapsules: 67,
-        myCapsulesCount: 3,
-        totalDataStored: '2.3 GB',
-        averageUnlockTime: 30,
-        mostUsedType: 'TIME_LOCK',
-      } as CapsuleStats
+      console.warn('⚠️ Statistiques non disponibles sur la blockchain:', error instanceof Error ? error.message : 'Erreur inconnue')
     }
+
+    // Fallback: Calculer des statistiques approximatives
+    console.log('🎭 Utilisation de statistiques mock')
+    await new Promise(resolve => setTimeout(resolve, 200))
+    return {
+      totalCapsules: 0, // Blockchain vide pour l'instant
+      activeCapsules: 0,
+      unlockedCapsules: 0,
+      myCapsulesCount: 0,
+      totalDataStored: '0 KB',
+      averageUnlockTime: 0,
+      mostUsedType: CapsuleType.TIME_LOCK,
+    } as CapsuleStats
   }
 
   // Obtenir les statistiques du réseau depuis la blockchain
   async getNetworkStats(): Promise<NetworkStats> {
+    // Essayer d'abord de récupérer les vraies statistiques réseau
     try {
-      // Essayer de récupérer les données réelles de votre blockchain
       console.log('Tentative de connexion à la blockchain...')
-      
-      const rpcEndpoint = process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'http://localhost:26657'
-      
+
+      const rpcEndpoint = process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'http://141.95.160.10:26657'
+
       // Requête directe vers le RPC de votre blockchain
       const response = await fetch(`${rpcEndpoint}/status`, {
         method: 'GET',
@@ -234,52 +256,72 @@ class CapsuleAPI {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        // Timeout pour éviter les blocages
-        signal: AbortSignal.timeout(5000)
+        // Timeout augmenté pour connexion VPS
+        signal: AbortSignal.timeout(15000)
       })
 
       if (response.ok) {
         const data = await response.json()
         const result = data.result
-        
-        console.log('Données blockchain récupérées:', result)
-        
-        // Calculer quelques métriques
-        const blockHeight = parseInt(result.sync_info?.latest_block_height || '87848')
+
+        console.log('✅ Données blockchain récupérées - Hauteur:', result.sync_info?.latest_block_height)
+
+        // Calculer quelques métriques réelles
+        const blockHeight = parseInt(result.sync_info?.latest_block_height || '0')
+        const earliestBlockHeight = parseInt(result.sync_info?.earliest_block_height || '1')
         const blockTime = new Date(result.sync_info?.latest_block_time).getTime()
-        const now = Date.now()
-        const secondsSinceBlock = (now - blockTime) / 1000
-        
+        const earliestBlockTime = new Date(result.sync_info?.earliest_block_time).getTime()
+
+        // Calculer le temps de bloc moyen basé sur les données réelles
+        const totalBlocks = blockHeight - earliestBlockHeight
+        const totalTimeMs = blockTime - earliestBlockTime
+        const averageBlockTimeSeconds = totalBlocks > 0 ? (totalTimeMs / 1000) / totalBlocks : 6.0
+
+        // Nombre de peers connectés
+        let connectedNodes = 1 // Par défaut, au moins le nœud actuel
+
+        // Tenter de récupérer le nombre de peers
+        try {
+          const netInfoResponse = await fetch(`${rpcEndpoint}/net_info`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(10000)
+          })
+          if (netInfoResponse.ok) {
+            const netInfoData = await netInfoResponse.json()
+            connectedNodes = parseInt(netInfoData.result?.n_peers || '0') + 1 // +1 pour le nœud actuel
+          }
+        } catch (netError) {
+          console.warn('Impossible de récupérer net_info:', netError)
+        }
+
         return {
           blockHeight: blockHeight,
-          totalTransactions: Math.floor(blockHeight * 0.5), // Estimation
+          totalTransactions: totalBlocks, // Approximation: 1 tx par bloc minimum
           networkHealth: result.sync_info?.catching_up ? 'degraded' : 'healthy',
-          averageBlockTime: Math.max(6.2, secondsSinceBlock), // Temps depuis le dernier bloc
-          connectedNodes: parseInt(result.validator_info?.voting_power || '1'),
+          averageBlockTime: parseFloat(averageBlockTimeSeconds.toFixed(2)),
+          connectedNodes: connectedNodes,
           ipfsNodes: 0 // Pas encore implémenté
         }
       }
     } catch (error) {
-      console.warn('Impossible de contacter la blockchain, utilisation de données simulées:', error)
+      console.warn('⚠️ Impossible de contacter la blockchain:', error instanceof Error ? error.message : 'Erreur inconnue')
     }
 
-    // Fallback: données simulées réalistes basées sur votre blockchain
-    console.log('Mode simulation avec données réalistes basées sur votre blockchain')
+    // Fallback: données simulées approximatives
+    console.log('🎭 Mode simulation - utilisation de statistiques approximatives')
     await new Promise(resolve => setTimeout(resolve, 300))
-    
-    const now = Date.now()
-    const baseHeight = 87848 // Votre hauteur de bloc actuelle
-    const variation = Math.floor((now / 30000) % 10) // Change toutes les 30 secondes
-    
+
     return {
-      blockHeight: baseHeight + variation,
-      totalTransactions: Math.floor((baseHeight + variation) * 0.3),
-      networkHealth: 'healthy',
-      averageBlockTime: 6.2 + (Math.random() - 0.5) * 1,
-      connectedNodes: 1, // Votre nœud
+      blockHeight: 0,
+      totalTransactions: 0,
+      networkHealth: 'offline',
+      averageBlockTime: 0,
+      connectedNodes: 0,
       ipfsNodes: 0
     }
   }
+
 
   // =============================================================================
   // REQUÊTES API PERSONNALISÉE
@@ -320,43 +362,51 @@ class CapsuleAPI {
 
   // Récupérer l'activité d'une capsule
   async getCapsuleActivity(capsuleId: string): Promise<any[]> {
-    // En mode développement, retourner des données mock
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
-      console.log('Mode développement - utilisation des données mock pour l\'activité')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      return [
-        {
-          action: 'Capsule créée',
-          description: 'La capsule a été créée avec succès',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          type: 'creation',
-          user: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz'
-        },
-        {
-          action: 'Données chiffrées',
-          description: 'Les données ont été chiffrées avec AES-256-GCM',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000 + 1000),
-          type: 'encryption',
-          user: 'système'
-        },
-        {
-          action: 'Fragments distribués',
-          description: 'Les fragments de clé ont été distribués aux masternodes',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000 + 2000),
-          type: 'distribution',
-          user: 'système'
-        }
-      ]
+    // Essayer d'abord de récupérer l'activité depuis la blockchain
+    try {
+      console.log(`Tentative de récupération de l'activité de la capsule ${capsuleId}...`)
+      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsule/${capsuleId}/activity`, {
+        timeout: 10000
+      })
+
+      if (response.data && response.data.activities && response.data.activities.length > 0) {
+        console.log('✅ Activité trouvée sur la blockchain:', response.data.activities.length, 'événements')
+        return response.data.activities
+      }
+    } catch (error) {
+      console.warn('⚠️ Activité non trouvée sur la blockchain:', error instanceof Error ? error.message : 'Erreur inconnue')
     }
 
-    try {
-      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsule/${capsuleId}/activity`)
-      return response.data.activities || []
-    } catch (error) {
-      console.warn('Activité de la capsule non disponible:', error.message)
-      return []
-    }
+    // Fallback: Retourner des données mock basées sur des événements réalistes
+    console.log('🎭 Utilisation de données mock pour l\'activité de la capsule')
+    const now = Date.now()
+    return [
+      {
+        action: 'Capsule créée',
+        description: 'La capsule a été créée avec succès sur la blockchain',
+        timestamp: new Date(now - 24 * 60 * 60 * 1000),
+        type: 'creation',
+        user: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
+        txHash: '0x' + Math.random().toString(16).substr(2, 64),
+        blockHeight: Math.floor(Math.random() * 1000) + 1
+      },
+      {
+        action: 'Données chiffrées',
+        description: 'Les données ont été chiffrées avec AES-256-GCM',
+        timestamp: new Date(now - 24 * 60 * 60 * 1000 + 1000),
+        type: 'encryption',
+        user: 'système',
+        blockHeight: Math.floor(Math.random() * 1000) + 1
+      },
+      {
+        action: 'Fragments distribués',
+        description: 'Les fragments de clé ont été distribués aux masternodes',
+        timestamp: new Date(now - 24 * 60 * 60 * 1000 + 2000),
+        type: 'distribution',
+        user: 'système',
+        blockHeight: Math.floor(Math.random() * 1000) + 1
+      }
+    ]
   }
 
   // Déverrouiller une capsule
@@ -372,7 +422,7 @@ class CapsuleAPI {
         const localCapsuleData = localStorage.getItem(localCapsuleKey)
         if (localCapsuleData) {
           const capsule = JSON.parse(localCapsuleData)
-          capsule.status = 'UNLOCKED'
+          capsule.status = CapsuleStatus.UNLOCKED
           localStorage.setItem(localCapsuleKey, JSON.stringify(capsule))
         }
       } catch (error) {
@@ -448,13 +498,27 @@ class CapsuleAPI {
 
   // Récupérer l'activité récente de l'utilisateur
   async getRecentActivity(address: string): Promise<any[]> {
-    // En mode développement, utiliser des données basées sur les capsules locales
+    // Essayer d'abord de récupérer l'activité depuis la blockchain
+    try {
+      console.log(`Tentative de récupération de l'activité pour ${address} depuis la blockchain...`)
+      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/user/${address}/activity`, {
+        timeout: 10000
+      })
+      if (response.data && response.data.activities) {
+        console.log('✅ Activités trouvées sur la blockchain')
+        return response.data.activities
+      }
+    } catch (error) {
+      console.warn('⚠️ Activités non trouvées sur la blockchain')
+    }
+
+    // Fallback 1: Générer des activités basées sur les capsules locales (mode développement)
     if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
-      console.log('Mode développement - génération d\'activité récente basée sur les capsules locales')
-      
+      console.log('📦 Génération d\'activités basées sur les capsules localStorage')
+
       const localCapsules = this.getLocalCapsules()
       const activities = []
-      
+
       // Générer des activités basées sur les capsules existantes
       for (const capsule of localCapsules.slice(0, 5)) {
         // Activité de création
@@ -467,7 +531,7 @@ class CapsuleAPI {
           description: `Capsule temporelle créée (${capsule.type})`,
           user: address
         })
-        
+
         // Activité de consultation si la capsule est débloquable
         if (capsule.isUnlockable) {
           activities.push({
@@ -481,7 +545,7 @@ class CapsuleAPI {
           })
         }
       }
-      
+
       // Ajouter quelques activités simulées récentes
       const now = new Date()
       activities.unshift({
@@ -493,55 +557,36 @@ class CapsuleAPI {
         description: 'Consultation du tableau de bord',
         user: address
       })
-      
-      // Simuler la connexion blockchain
-      if (Math.random() > 0.7) { // 30% de chance
-        activities.unshift({
-          id: 'blockchain-sync',
-          type: 'synced',
-          capsuleId: 'network',
-          capsuleTitle: 'Synchronisation blockchain',
-          timestamp: new Date(now.getTime() - 2 * 60 * 1000), // 2 min ago
-          description: `Blocs synchronisés jusqu'à la hauteur ${87848 + Math.floor(Math.random() * 10)}`,
-          user: 'système'
-        })
-      }
-      
+
       // Trier par timestamp décroissant et limiter à 8 activités
       return activities
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         .slice(0, 8)
     }
 
-    try {
-      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/user/${address}/activity`)
-      return response.data.activities || []
-    } catch (error) {
-      console.warn('API activité non disponible, utilisation de données simulées')
-      
-      // Fallback avec données génériques
-      const now = new Date()
-      return [
-        {
-          id: '1',
-          type: 'created',
-          capsuleId: 'demo-1',
-          capsuleTitle: 'Ma première capsule',
-          timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-          description: 'Capsule temporelle créée',
-          user: address
-        },
-        {
-          id: '2',
-          type: 'viewed',
-          capsuleId: 'demo-2',
-          capsuleTitle: 'Dashboard',
-          timestamp: new Date(now.getTime() - 30 * 60 * 1000),
-          description: 'Consultation du tableau de bord',
-          user: address
-        }
-      ]
-    }
+    // Fallback 2: Données mock génériques
+    console.log('🎭 Utilisation de données mock pour les activités')
+    const now = new Date()
+    return [
+      {
+        id: '1',
+        type: 'created',
+        capsuleId: 'demo-1',
+        capsuleTitle: 'Ma première capsule',
+        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+        description: 'Capsule temporelle créée',
+        user: address
+      },
+      {
+        id: '2',
+        type: 'viewed',
+        capsuleId: 'demo-2',
+        capsuleTitle: 'Dashboard',
+        timestamp: new Date(now.getTime() - 30 * 60 * 1000),
+        description: 'Consultation du tableau de bord',
+        user: address
+      }
+    ]
   }
 
   // Rechercher des capsules
@@ -562,12 +607,12 @@ class CapsuleAPI {
   // =============================================================================
 
   private transformCapsuleFromChain(chainCapsule: any): TimeCapsule {
-    return {
+    const capsule: TimeCapsule = {
       id: chainCapsule.id?.toString() || '',
       owner: chainCapsule.owner || '',
       recipient: chainCapsule.recipient || '',
-      type: chainCapsule.capsule_type || 'TIME_LOCK',
-      status: chainCapsule.status || 'ACTIVE',
+      type: chainCapsule.capsule_type || CapsuleType.TIME_LOCK,
+      status: chainCapsule.status || CapsuleStatus.ACTIVE,
       title: chainCapsule.metadata?.title || `Capsule #${chainCapsule.id}`,
       description: chainCapsule.metadata?.description || '',
       encryptedData: chainCapsule.encrypted_data || '',
@@ -575,7 +620,6 @@ class CapsuleAPI {
       dataHash: chainCapsule.data_hash || '',
       storageType: chainCapsule.storage_type === 'IPFS' ? 'ipfs' : 'blockchain',
       ipfsHash: chainCapsule.ipfs_hash,
-      unlockTime: chainCapsule.unlock_time ? new Date(chainCapsule.unlock_time) : undefined,
       createdAt: new Date(chainCapsule.created_at || chainCapsule.created_time || Date.now()),
       updatedAt: new Date(chainCapsule.updated_at || chainCapsule.updated_time || Date.now()),
       metadata: chainCapsule.metadata || {},
@@ -584,6 +628,13 @@ class CapsuleAPI {
       isUnlockable: this.checkIfUnlockable(chainCapsule),
       isPublic: chainCapsule.is_public || false,
     }
+
+    // Add unlockTime only if it exists
+    if (chainCapsule.unlock_time) {
+      capsule.unlockTime = new Date(chainCapsule.unlock_time)
+    }
+
+    return capsule
   }
 
   private transformTransferFromChain(chainTransfer: any): TransferHistory {
@@ -653,23 +704,22 @@ class CapsuleAPI {
       if (!capsuleData) return null
       
       const data = JSON.parse(capsuleData)
-      return {
+      const capsule: TimeCapsule = {
         id: data.id,
         owner: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
         recipient: data.recipient || 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
-        type: data.type || 'TIME_LOCK',
-        status: data.status || 'ACTIVE',
+        type: data.type || CapsuleType.TIME_LOCK,
+        status: data.status || CapsuleStatus.ACTIVE,
         title: data.title || 'Capsule sans titre',
         description: data.description || '',
         encryptedData: '',
         dataSize: data.fileSize || 0,
         dataHash: data.txHash || '',
         storageType: 'blockchain',
-        unlockTime: data.unlockTime ? new Date(data.unlockTime) : undefined,
         createdAt: new Date(data.createdAt || Date.now()),
         updatedAt: new Date(data.createdAt || Date.now()),
-        metadata: { 
-          local: true, 
+        metadata: {
+          local: true,
           fileName: data.fileName,
           txHash: data.txHash,
           cryptoAssets: data.cryptoAssets || []
@@ -680,6 +730,13 @@ class CapsuleAPI {
         isPublic: data.isPublic || false,
         cryptoAssets: data.cryptoAssets || []
       }
+
+      // Add unlockTime only if it exists
+      if (data.unlockTime) {
+        capsule.unlockTime = new Date(data.unlockTime)
+      }
+
+      return capsule
     } catch (error) {
       console.warn(`Erreur lors de la récupération de la capsule locale ${id}:`, error)
       return null
@@ -694,8 +751,8 @@ class CapsuleAPI {
       id,
       owner: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
       recipient: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
-      type: 'TIME_LOCK',
-      status: 'ACTIVE',
+      type: CapsuleType.TIME_LOCK,
+      status: CapsuleStatus.ACTIVE,
       title: `Capsule Test #${id}`,
       description: 'Capsule de développement générée automatiquement',
       encryptedData: '',
@@ -714,86 +771,19 @@ class CapsuleAPI {
   }
 
   private createMockUserCapsules(address: string, page: number, limit: number): PaginatedResponse<TimeCapsule> {
-    // Récupérer les capsules stockées localement
+    // Récupérer uniquement les capsules stockées localement (plus de capsules de démonstration)
     const localCapsules = this.getLocalCapsules()
-    
-    // Créer quelques capsules d'exemple + les capsules locales
-    const mockCapsules = [
-      {
-        id: '1',
-        owner: address,
-        recipient: address,
-        type: 'TIME_LOCK' as const,
-        status: 'ACTIVE' as const,
-        title: 'Ma première capsule temporelle',
-        description: 'Documents importants avec déverrouillage dans 30 jours',
-        encryptedData: '',
-        dataSize: 2048,
-        dataHash: 'mock-hash-1',
-        storageType: 'blockchain' as const,
-        unlockTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        metadata: { mock: true, category: 'documents' },
-        threshold: 1,
-        totalShares: 1,
-        isUnlockable: false,
-        isPublic: false,
-      },
-      {
-        id: '2',
-        owner: address,
-        recipient: address,
-        type: 'SAFE' as const,
-        status: 'ACTIVE' as const,
-        title: 'Coffre-fort personnel',
-        description: 'Codes d\'accès et informations sensibles',
-        encryptedData: '',
-        dataSize: 512,
-        dataHash: 'mock-hash-2',
-        storageType: 'blockchain' as const,
-        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
-        metadata: { mock: true, category: 'security' },
-        threshold: 1,
-        totalShares: 1,
-        isUnlockable: true,
-        isPublic: false,
-      },
-      {
-        id: '3',
-        owner: address,
-        recipient: address,
-        type: 'TIME_LOCK' as const,
-        status: 'UNLOCKED' as const,
-        title: 'Capsule déverrouillée',
-        description: 'Cette capsule a été ouverte',
-        encryptedData: '',
-        dataSize: 1024,
-        dataHash: 'mock-hash-3',
-        storageType: 'blockchain' as const,
-        unlockTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        metadata: { mock: true, category: 'completed' },
-        threshold: 1,
-        totalShares: 1,
-        isUnlockable: true,
-        isPublic: false,
-      },
-      ...localCapsules // Ajouter les capsules créées localement
-    ]
 
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
-    const paginatedCapsules = mockCapsules.slice(startIndex, endIndex)
+    const paginatedCapsules = localCapsules.slice(startIndex, endIndex)
 
     return {
       items: paginatedCapsules,
-      total: mockCapsules.length,
+      total: localCapsules.length,
       page,
       limit,
-      hasNext: endIndex < mockCapsules.length,
+      hasNext: endIndex < localCapsules.length,
       hasPrev: page > 1,
     }
   }
@@ -817,8 +807,9 @@ class CapsuleAPI {
             try {
               data = JSON.parse(rawData)
             } catch {
-              // Si ce n'est pas du JSON valide, ignorer cette entrée
-              console.warn(`Capsule locale ${key} contient des données invalides, ignorée`)
+              // Si ce n'est pas du JSON valide, supprimer cette entrée
+              console.warn(`Capsule locale ${key} contient des données invalides, suppression...`)
+              localStorage.removeItem(key)
               continue
             }
           } else {
@@ -827,27 +818,27 @@ class CapsuleAPI {
 
           // Vérifier que data est un objet valide
           if (!data || typeof data !== 'object') {
-            console.warn(`Capsule locale ${key} ne contient pas un objet valide, ignorée`)
+            console.warn(`Capsule locale ${key} ne contient pas un objet valide, suppression...`)
+            localStorage.removeItem(key)
             continue
           }
 
-          capsules.push({
+          const capsule: TimeCapsule = {
             id: data.id || key.replace('capsule-', ''),
             owner: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
             recipient: data.recipient || 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
-            type: data.type || 'TIME_LOCK',
-            status: data.status || 'ACTIVE',
+            type: data.type || CapsuleType.TIME_LOCK,
+            status: data.status || CapsuleStatus.ACTIVE,
             title: data.title || 'Capsule sans titre',
             description: data.description || '',
             encryptedData: '',
             dataSize: data.fileSize || 0,
             dataHash: data.txHash || '',
             storageType: 'blockchain',
-            unlockTime: data.unlockTime ? new Date(data.unlockTime) : undefined,
             createdAt: new Date(data.createdAt || Date.now()),
             updatedAt: new Date(data.createdAt || Date.now()),
-            metadata: { 
-              local: true, 
+            metadata: {
+              local: true,
               fileName: data.fileName,
               txHash: data.txHash,
               cryptoAssets: data.cryptoAssets || []
@@ -857,9 +848,16 @@ class CapsuleAPI {
             isUnlockable: data.type === 'SAFE' || (data.unlockTime && new Date(data.unlockTime) <= new Date()),
             isPublic: data.isPublic || false,
             cryptoAssets: data.cryptoAssets || []
-          })
+          }
+
+          // Add unlockTime only if it exists
+          if (data.unlockTime) {
+            capsule.unlockTime = new Date(data.unlockTime)
+          }
+
+          capsules.push(capsule)
         } catch (error) {
-          console.warn(`Erreur lors du parsing de la capsule locale ${key}:`, error.message)
+          console.warn(`Erreur lors du parsing de la capsule locale ${key}:`, error instanceof Error ? error.message : String(error))
           // Nettoyer les entrées corrompues
           try {
             localStorage.removeItem(key)
@@ -875,150 +873,44 @@ class CapsuleAPI {
 
   // Récupérer les capsules publiques
   async getPublicCapsules(page = 1, limit = 20): Promise<PaginatedResponse<TimeCapsule>> {
-    // En mode développement ou hybride, utiliser des données mock + locales
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true' || process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'hybrid') {
-      console.log('Mode développement/hybride - utilisation des données mock + locales pour les capsules publiques')
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return this.createMockPublicCapsulesWithLocal(page, limit)
-    }
-
+    // Essayer d'abord de récupérer depuis la blockchain
     try {
-      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsules/public?pagination.limit=${limit}&pagination.offset=${(page - 1) * limit}`)
-      
-      const capsules = response.data.capsules?.map(this.transformCapsuleFromChain) || []
-      
-      return {
-        items: capsules,
-        total: parseInt(response.data.pagination?.total || '0'),
-        page,
-        limit,
-        hasNext: capsules.length === limit,
-        hasPrev: page > 1,
+      console.log('Tentative de récupération des capsules publiques depuis la blockchain...')
+      const response = await this.cosmosAPI.get(
+        `/cosmos/timecapsule/v1/capsules/public?pagination.limit=${limit}&pagination.offset=${(page - 1) * limit}`,
+        { timeout: 10000 }
+      )
+
+      if (response.data && response.data.capsules) {
+        const capsules = response.data.capsules.map(this.transformCapsuleFromChain)
+        console.log(`✅ ${capsules.length} capsules publiques trouvées sur la blockchain`)
+
+        return {
+          items: capsules,
+          total: parseInt(response.data.pagination?.total || '0'),
+          page,
+          limit,
+          hasNext: capsules.length === limit,
+          hasPrev: page > 1,
+        }
       }
     } catch (error) {
-      console.warn('API blockchain non disponible pour getPublicCapsules, utilisation des données mock + locales')
-      return this.createMockPublicCapsulesWithLocal(page, limit)
+      console.warn('⚠️ Capsules publiques non trouvées sur la blockchain')
     }
+
+    // Fallback: données mock + locales
+    console.log('📦 Utilisation des capsules publiques localStorage + mock')
+    return this.createMockPublicCapsulesWithLocal(page, limit)
   }
 
-  // Récupérer une capsule publique spécifique
-  async getPublicCapsule(id: string): Promise<TimeCapsule> {
-    // En mode développement ou hybride, utiliser des données mock
-    if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true' || process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'hybrid') {
-      console.log('Mode développement/hybride - utilisation des données mock pour la capsule publique')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      return this.createMockPublicCapsule(id)
-    }
-
-    try {
-      const response = await this.cosmosAPI.get(`/cosmos/timecapsule/v1/capsule/public/${id}`)
-      return this.transformCapsuleFromChain(response.data.capsule)
-    } catch (error) {
-      console.warn('API blockchain non disponible pour getPublicCapsule, utilisation des données mock')
-      return this.createMockPublicCapsule(id)
-    }
-  }
-
-  // Version améliorée qui inclut les capsules locales publiques
+  // Version améliorée qui inclut uniquement les capsules locales publiques (plus de capsules de démonstration)
   private createMockPublicCapsulesWithLocal(page: number, limit: number): PaginatedResponse<TimeCapsule> {
-    // Récupérer les capsules locales publiques
+    // Récupérer uniquement les capsules locales publiques
     const localPublicCapsules = this.getLocalPublicCapsules()
-    
-    const now = new Date()
-    const mockPublicCapsules: TimeCapsule[] = [
-      // Inclure d'abord les capsules créées localement
-      ...localPublicCapsules,
-      {
-        id: 'public-1',
-        owner: 'cosmos1abc123...',
-        recipient: 'cosmos1xyz789...',
-        type: 'TIME_LOCK',
-        status: 'ACTIVE',
-        title: 'Message pour le futur',
-        description: 'Une capsule temporelle contenant des prédictions pour 2030',
-        encryptedData: '',
-        dataSize: 1024,
-        dataHash: 'public-hash-1',
-        storageType: 'ipfs',
-        ipfsHash: 'QmPublic123...',
-        unlockTime: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000), // 1 an
-        createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 jours
-        updatedAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-        metadata: { public: true, category: 'prediction' },
-        threshold: 1,
-        totalShares: 1,
-        isUnlockable: false,
-        isPublic: true,
-      },
-      {
-        id: 'public-2',
-        owner: 'cosmos1def456...',
-        recipient: 'cosmos1ghi789...',
-        type: 'SAFE',
-        status: 'ACTIVE',
-        title: 'Capsule artistique collaborative',
-        description: 'Collection d\'œuvres d\'art numériques partagées avec la communauté',
-        encryptedData: '',
-        dataSize: 5120,
-        dataHash: 'public-hash-2',
-        storageType: 'ipfs',
-        ipfsHash: 'QmPublic456...',
-        createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 jours
-        updatedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
-        metadata: { public: true, category: 'art' },
-        threshold: 1,
-        totalShares: 1,
-        isUnlockable: true,
-        isPublic: true,
-      },
-      {
-        id: 'public-3',
-        owner: 'cosmos1jkl012...',
-        recipient: 'cosmos1mno345...',
-        type: 'CONDITIONAL',
-        status: 'ACTIVE',
-        title: 'Recherche scientifique ouverte',
-        description: 'Données de recherche en accès libre pour la communauté scientifique',
-        encryptedData: '',
-        dataSize: 10240,
-        dataHash: 'public-hash-3',
-        storageType: 'blockchain',
-        unlockTime: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 jours
-        createdAt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000), // 14 jours
-        updatedAt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000),
-        metadata: { public: true, category: 'research' },
-        threshold: 2,
-        totalShares: 3,
-        isUnlockable: false,
-        isPublic: true,
-      },
-      {
-        id: 'public-4',
-        owner: 'cosmos1pqr678...',
-        recipient: 'cosmos1stu901...',
-        type: 'TIME_LOCK',
-        status: 'UNLOCKED',
-        title: 'Histoire locale dévoilée',
-        description: 'Documents historiques de notre ville maintenant accessibles',
-        encryptedData: '',
-        dataSize: 2048,
-        dataHash: 'public-hash-4',
-        storageType: 'ipfs',
-        ipfsHash: 'QmPublic789...',
-        unlockTime: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000), // Déverrouillée il y a 2 jours
-        createdAt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // 30 jours
-        updatedAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
-        metadata: { public: true, category: 'history' },
-        threshold: 1,
-        totalShares: 1,
-        isUnlockable: true,
-        isPublic: true,
-      },
-    ]
 
     // Trier par date de création (plus récent en premier)
-    const sortedCapsules = mockPublicCapsules.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    
+    const sortedCapsules = localPublicCapsules.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const paginatedCapsules = sortedCapsules.slice(startIndex, endIndex)
@@ -1061,32 +953,38 @@ class CapsuleAPI {
 
           // Vérifier si la capsule est publique
           if (data && data.isPublic) {
-            publicCapsules.push({
+            const capsule: TimeCapsule = {
               id: data.id || key.replace('capsule-', ''),
               owner: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
               recipient: 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
-              type: data.type || 'TIME_LOCK',
-              status: 'ACTIVE',
+              type: data.type || CapsuleType.TIME_LOCK,
+              status: CapsuleStatus.ACTIVE,
               title: data.title || 'Capsule sans titre',
               description: data.description || '',
               encryptedData: '',
               dataSize: data.fileSize || 0,
               dataHash: data.txHash || '',
               storageType: 'blockchain',
-              unlockTime: data.unlockTime ? new Date(data.unlockTime) : undefined,
               createdAt: new Date(data.createdAt || Date.now()),
               updatedAt: new Date(data.createdAt || Date.now()),
-              metadata: { 
-                local: true, 
+              metadata: {
+                local: true,
                 fileName: data.fileName,
                 txHash: data.txHash,
-                public: true 
+                public: true
               },
               threshold: 1,
               totalShares: 1,
               isUnlockable: data.type === 'SAFE' || (data.unlockTime && new Date(data.unlockTime) <= new Date()),
               isPublic: true,
-            })
+            }
+
+            // Add unlockTime only if it exists
+            if (data.unlockTime) {
+              capsule.unlockTime = new Date(data.unlockTime)
+            }
+
+            publicCapsules.push(capsule)
           }
         } catch (error) {
           console.warn(`Erreur lors du parsing de la capsule locale ${key}:`, error)
@@ -1105,8 +1003,8 @@ class CapsuleAPI {
       'public-1': {
         id: 'public-1',
         owner: 'cosmos1abc123456def789ghi012jkl345mno678pqr901',
-        type: 'TIME_LOCK',
-        status: 'ACTIVE',
+        type: CapsuleType.TIME_LOCK,
+        status: CapsuleStatus.ACTIVE,
         title: 'Message pour le futur',
         description: 'Une capsule temporelle contenant des prédictions pour 2030. Cette capsule révélera des informations importantes concernant l\'évolution de la technologie blockchain et ses implications pour la société.',
         dataSize: 1024,
@@ -1120,8 +1018,8 @@ class CapsuleAPI {
       'public-2': {
         id: 'public-2',
         owner: 'cosmos1def456789ghi012jkl345mno678pqr901stu234',
-        type: 'SAFE',
-        status: 'ACTIVE',
+        type: CapsuleType.SAFE,
+        status: CapsuleStatus.ACTIVE,
         title: 'Capsule artistique collaborative',
         description: 'Collection d\'œuvres d\'art numériques partagées avec la communauté. Cette capsule contient des créations uniques de plusieurs artistes participant au projet collaboratif Capsule Art.',
         dataSize: 5120,
@@ -1134,8 +1032,8 @@ class CapsuleAPI {
       'public-3': {
         id: 'public-3',
         owner: 'cosmos1jkl012345mno678pqr901stu234vwx567yza890',
-        type: 'CONDITIONAL',
-        status: 'ACTIVE',
+        type: CapsuleType.CONDITIONAL,
+        status: CapsuleStatus.ACTIVE,
         title: 'Recherche scientifique ouverte',
         description: 'Données de recherche en accès libre pour la communauté scientifique. Cette capsule contient des résultats de recherche sur les propriétés quantiques des matériaux supraconducteurs, avec des applications potentielles révolutionnaires.',
         dataSize: 10240,
@@ -1150,8 +1048,8 @@ class CapsuleAPI {
       'public-4': {
         id: 'public-4',
         owner: 'cosmos1pqr678901stu234vwx567yza890bcd123efg456',
-        type: 'TIME_LOCK',
-        status: 'UNLOCKED',
+        type: CapsuleType.TIME_LOCK,
+        status: CapsuleStatus.UNLOCKED,
         title: 'Histoire locale dévoilée',
         description: 'Documents historiques de notre ville maintenant accessibles. Cette capsule révèle des archives inédites sur l\'histoire de notre communauté et des personnages qui ont marqué son développement.',
         dataSize: 2048,
@@ -1167,12 +1065,12 @@ class CapsuleAPI {
     const capsuleData = publicCapsules[id]
     if (!capsuleData) {
       // Capsule générique si l'ID n'est pas trouvé
-      return {
+      const genericCapsule: TimeCapsule = {
         id,
         owner: 'cosmos1unknown000000000000000000000000000000000',
         recipient: 'cosmos1public111111111111111111111111111111111',
-        type: 'TIME_LOCK',
-        status: 'ACTIVE',
+        type: CapsuleType.TIME_LOCK,
+        status: CapsuleStatus.ACTIVE,
         title: `Capsule Publique #${id}`,
         description: 'Capsule publique générée automatiquement pour la démonstration.',
         encryptedData: '',
@@ -1188,10 +1086,11 @@ class CapsuleAPI {
         isUnlockable: false,
         isPublic: true,
       }
+      return genericCapsule
     }
 
     // Retourner la capsule avec les valeurs par défaut complétées
-    return {
+    const result: TimeCapsule = {
       id: capsuleData.id!,
       owner: capsuleData.owner!,
       recipient: capsuleData.owner!, // Le destinataire est le même que le propriétaire pour les capsules publiques
@@ -1203,8 +1102,6 @@ class CapsuleAPI {
       dataSize: capsuleData.dataSize!,
       dataHash: `public-hash-${id}`,
       storageType: capsuleData.storageType!,
-      ipfsHash: capsuleData.ipfsHash,
-      unlockTime: capsuleData.unlockTime,
       createdAt: capsuleData.createdAt!,
       updatedAt: capsuleData.createdAt!,
       metadata: capsuleData.metadata!,
@@ -1213,6 +1110,16 @@ class CapsuleAPI {
       isUnlockable: capsuleData.isUnlockable!,
       isPublic: true,
     }
+
+    // Add optional properties only if they exist
+    if (capsuleData.ipfsHash) {
+      result.ipfsHash = capsuleData.ipfsHash
+    }
+    if (capsuleData.unlockTime) {
+      result.unlockTime = capsuleData.unlockTime
+    }
+
+    return result
   }
 }
 

@@ -9,7 +9,8 @@ interface AuthState extends User, WalletConnection {
   client: any | null
   queryClient: any | null
   walletManager: WalletManager | null
-  
+  needsFunding: boolean
+
   // Actions
   initializeWalletManager: () => void
   connect: (walletType: 'keplr' | 'cosmostation' | 'leap') => Promise<void>
@@ -32,6 +33,7 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
       walletManager: null,
       isConnecting: false,
       error: null,
+      needsFunding: false,
 
       // Initialisation du wallet manager
       initializeWalletManager: () => {
@@ -76,14 +78,23 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
           
           // Récupérer le solde initial
           console.log('6. Récupération du solde...')
-          let formattedBalance = '0 MTQ'
+          const denom = process.env.NEXT_PUBLIC_DENOM || 'ucaps'
+          let formattedBalance = '0 CAPS'
+          let balanceAmount = 0
           try {
-            const balanceResponse = await queryClient.getBalance(address, 'mtq')
-            formattedBalance = WalletManager.formatBalance(balanceResponse.amount)
+            const balanceResponse = await queryClient.getBalance(address, denom)
+            balanceAmount = parseInt(balanceResponse.amount || '0')
+            formattedBalance = `${(balanceAmount / 1000000).toFixed(2)} CAPS`
             console.log('7. Solde récupéré:', formattedBalance)
-          } catch (balanceError) {
-            console.warn('Impossible de récupérer le solde:', balanceError.message)
+          } catch (balanceError: any) {
+            console.warn('Impossible de récupérer le solde:', balanceError?.message || balanceError)
             console.log('7. Utilisation du solde par défaut')
+          }
+
+          // Détecter si c'est un nouveau compte qui a besoin de financement
+          const isNewAccount = balanceAmount === 0
+          if (isNewAccount) {
+            console.log('🆕 Nouveau compte détecté - faucet disponible')
           }
 
           console.log('8. Mise à jour de l\'état final...')
@@ -97,6 +108,7 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
             queryClient,
             isConnecting: false,
             error: null,
+            needsFunding: isNewAccount,
           })
 
           console.log(`9. Connexion terminée avec succès - ${walletType}:`, address)
@@ -121,54 +133,45 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
           client: null,
           queryClient: null,
           error: null,
+          needsFunding: false,
         })
         console.log('Déconnecté du wallet')
       },
 
       // Mise à jour du solde
       updateBalance: async () => {
-        const { address } = get()
+        const { address, queryClient, walletManager } = get()
         if (!address) {
-          set({ balance: '0' })
+          set({ balance: '0 CAPS' })
           return
         }
 
         try {
-          // En mode développement, utiliser des données simulées réalistes
-          if (process.env.NEXT_PUBLIC_DEVELOPMENT_MODE === 'true') {
-            // Simuler un solde basé sur l'adresse et l'activité
-            const addressHash = address.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
-            const baseBalance = 10000 + (addressHash % 50000) // Entre 10k et 60k
-            const timeVariation = Math.sin(Date.now() / 100000) * 1000 // Variation temporelle
-            const simulatedBalance = Math.max(0, baseBalance + timeVariation)
-            
-            set({ balance: simulatedBalance.toFixed(2) })
-            console.log(`Solde simulé mis à jour: ${simulatedBalance.toFixed(2)} CAPS`)
-            return
+          const denom = process.env.NEXT_PUBLIC_DENOM || 'ucaps'
+
+          // Essayer d'utiliser le queryClient déjà existant
+          let client = queryClient
+
+          // Si pas de queryClient, en créer un nouveau
+          if (!client && walletManager) {
+            client = await walletManager.getQueryClient()
           }
 
-          // Essayer de récupérer le vrai solde depuis la blockchain
-          const { blockchainClient } = await import('@/lib/blockchain')
-          
-          if (blockchainClient.isConnected()) {
-            const realBalance = await blockchainClient.getBalance()
-            const formattedBalance = (parseInt(realBalance) / 1000000).toFixed(2) // Conversion µcaps vers CAPS
+          if (client) {
+            // Récupérer le vrai solde depuis la blockchain
+            const balanceResponse = await client.getBalance(address, denom)
+            const balanceAmount = parseInt(balanceResponse.amount || '0')
+            const formattedBalance = `${(balanceAmount / 1000000).toFixed(2)} CAPS`
+
             set({ balance: formattedBalance })
-            console.log(`Solde blockchain mis à jour: ${formattedBalance} CAPS`)
+            console.log(`✅ Solde blockchain mis à jour: ${formattedBalance}`)
           } else {
-            // Fallback: solde simulé basé sur l'adresse
-            const addressHash = address.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
-            const fallbackBalance = 5000 + (addressHash % 25000)
-            set({ balance: fallbackBalance.toFixed(2) })
-            console.log(`Solde fallback: ${fallbackBalance.toFixed(2)} CAPS`)
+            console.warn('Aucun client de requête disponible')
+            set({ balance: '0.00 CAPS' })
           }
         } catch (error) {
-          console.warn('Impossible de mettre à jour le solde, utilisation d\'un solde simulé:', error)
-          
-          // Fallback: solde simulé réaliste
-          const addressHash = address.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
-          const fallbackBalance = 1000 + (addressHash % 10000)
-          set({ balance: fallbackBalance.toFixed(2) })
+          console.warn('Erreur lors de la mise à jour du solde:', error)
+          set({ balance: '0.00 CAPS' })
         }
       },
 
@@ -204,10 +207,10 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
             }
             
             // Reconnecter silencieusement
-            await state.connect(state.walletType)
+            await state.connect(state.walletType!)
             console.log('✅ Reconnexion automatique réussie')
-          } catch (error) {
-            console.error('❌ Reconnexion automatique échouée:', error.message)
+          } catch (error: any) {
+            console.error('❌ Reconnexion automatique échouée:', error?.message || error)
             // Conserver les données pour permettre un retry manuel
             console.log('💾 Session conservée pour retry manuel')
           }
@@ -270,6 +273,7 @@ export const useAuth = () => {
     walletManager,
     isConnecting,
     error,
+    needsFunding,
     initializeWalletManager,
     connect,
     disconnect,
@@ -286,6 +290,7 @@ export const useAuth = () => {
     walletManager: state.walletManager,
     isConnecting: state.isConnecting,
     error: state.error,
+    needsFunding: state.needsFunding,
     initializeWalletManager: state.initializeWalletManager,
     connect: state.connect,
     disconnect: state.disconnect,
@@ -312,6 +317,7 @@ export const useAuth = () => {
     walletManager,
     isConnecting,
     error,
+    needsFunding,
     initializeWalletManager,
     connect,
     disconnect,
@@ -348,10 +354,19 @@ export const useTransaction = () => {
     }
 
     try {
+      const denom = process.env.NEXT_PUBLIC_DENOM || 'ucaps'
+      const gasPrice = parseFloat(process.env.NEXT_PUBLIC_GAS_PRICE?.replace(denom, '') || '0.025')
+      const gasLimit = '200000'
+
+      // Calculer les frais : gasLimit * gasPrice
+      const feeAmount = Math.ceil(parseInt(gasLimit) * gasPrice).toString()
+
       const fee = {
-        amount: [{ denom: 'mtq', amount: '5000' }],
-        gas: '200000',
+        amount: [{ denom: denom, amount: feeAmount }],
+        gas: gasLimit,
       }
+
+      console.log(`💰 Frais de transaction: ${feeAmount} ${denom} (${(parseInt(feeAmount) / 1000000).toFixed(6)} CAPS)`)
 
       const result = await client.signAndBroadcast(address, msgs, fee, memo)
       

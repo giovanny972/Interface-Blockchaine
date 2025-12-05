@@ -31,11 +31,11 @@ export default function ValidatorSection() {
               <ServerIcon className="w-10 h-10 text-white" />
             </div>
             <h2 className="text-4xl font-bold text-white mb-6">
-              Sécurisez le Réseau <span className="text-gradient">Capsule</span>
+              Sécurisez le Réseau <span className="text-gradient">Sirius</span>
             </h2>
             <p className="text-xl text-dark-300 max-w-3xl mx-auto">
-              Participez à la révolution du stockage temporel décentralisé. Comme les validateurs de Bitcoin, Ethereum et Solana, 
-              devenez un pilier essentiel de l'infrastructure Capsule Network et générez des revenus passifs.
+              Participez à la révolution du stockage temporel décentralisé. Comme les validateurs de Bitcoin, Ethereum et Solana,
+              devenez un pilier essentiel de l'infrastructure Sirius Network et générez des revenus passifs.
             </p>
           </motion.div>
         </div>
@@ -186,7 +186,7 @@ export default function ValidatorSection() {
               Rejoignez les Pionniers de la Validation
             </h4>
             <p className="text-dark-300 mb-6 max-w-2xl mx-auto">
-              Comme les premiers mineurs Bitcoin ou validateurs Ethereum, participez au lancement de Capsule Network. 
+              Comme les premiers mineurs Bitcoin ou validateurs Ethereum, participez au lancement de Sirius Network. 
               <span className="text-primary-400 font-semibold">Ensemble maximal de 150 validateurs</span> pour une sécurité optimale.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

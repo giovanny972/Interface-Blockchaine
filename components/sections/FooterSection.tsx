@@ -12,7 +12,7 @@ export default function FooterSection() {
             <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
               <CubeIcon className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-gradient">Capsule Network</span>
+            <span className="font-bold text-xl text-gradient">Sirius Network</span>
           </div>
           
           <div className="flex items-center space-x-6 text-sm text-dark-400">
@@ -24,7 +24,7 @@ export default function FooterSection() {
         </div>
         
         <div className="mt-8 pt-8 border-t border-dark-800 text-center text-sm text-dark-500">
-          © 2025 Capsule Network. Propulsé par Cosmos SDK & IPFS. Construit avec ❤️ pour la communauté Web3.
+          © 2025 Sirius Network. Propulsé par Cosmos SDK & IPFS. L'étoile la plus brillante du Web3.
         </div>
       </div>
     </footer>

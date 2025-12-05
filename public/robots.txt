@@ -1,0 +1,25 @@
+# Sirius Network - Robots.txt
+# https://sirius.network
+
+User-agent: *
+Allow: /
+
+# Pages principales
+Allow: /capsules
+Allow: /rwa
+Allow: /dashboard
+Allow: /marketplace
+Allow: /validators
+
+# Sitemap
+Sitemap: https://sirius.network/sitemap.xml
+
+# Optimisations pour les moteurs de recherche
+Crawl-delay: 1
+
+# Bloquer les pages d'API (pas nécessaire pour le SEO)
+Disallow: /api/
+
+# Bloquer les assets temporaires
+Disallow: /_next/
+Disallow: /static/

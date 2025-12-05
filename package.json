@@ -1,7 +1,7 @@
 {
-  "name": "capsule-web-interface",
-  "version": "1.0.0",
-  "description": "Interface web moderne pour le système de capsule temporelle blockchain",
+  "name": "sirius-network",
+  "version": "2.0.0",
+  "description": "Sirius Network - The Guardian Star of Digital Time Capsules. Blockchain-powered temporal storage on Cosmos SDK.",
   "private": true,
   "scripts": {
     "dev": "next dev",

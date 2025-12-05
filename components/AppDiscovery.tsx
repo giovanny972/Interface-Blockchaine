@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SparklesIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   UserGroupIcon,
   ClockIcon,
   TagIcon,
@@ -159,7 +159,7 @@ export default function AppDiscovery() {
 
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'trend': return TrendingUpIcon;
+      case 'trend': return ArrowTrendingUpIcon;
       case 'insight': return LightBulbIcon;
       case 'tip': return SparklesIcon;
       case 'update': return RocketLaunchIcon;
@@ -231,7 +231,7 @@ export default function AppDiscovery() {
             className="space-y-4"
           >
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUpIcon className="w-5 h-5 text-green-400" />
+              <ArrowTrendingUpIcon className="w-5 h-5 text-green-400" />
               <span className="text-sm text-gray-400">Applications en forte croissance cette semaine</span>
             </div>
 

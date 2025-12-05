@@ -4,8 +4,8 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   ChartBarIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
   UsersIcon,
   CloudArrowDownIcon,
   CurrencyDollarIcon,
@@ -245,9 +245,9 @@ export default function MarketplaceAnalytics() {
                   metric.changeType === 'decrease' ? 'text-red-400' : 'text-gray-400'
                 }`}>
                   {metric.changeType === 'increase' ? (
-                    <TrendingUpIcon className="w-3 h-3 mr-1" />
+                    <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />
                   ) : metric.changeType === 'decrease' ? (
-                    <TrendingDownIcon className="w-3 h-3 mr-1" />
+                    <ArrowTrendingDownIcon className="w-3 h-3 mr-1" />
                   ) : null}
                   {Math.abs(metric.change)}%
                 </div>
@@ -413,9 +413,9 @@ export default function MarketplaceAnalytics() {
                       app.growth < 0 ? 'text-red-400' : 'text-gray-400'
                     }`}>
                       {app.growth > 0 ? (
-                        <TrendingUpIcon className="w-4 h-4" />
+                        <ArrowTrendingUpIcon className="w-4 h-4" />
                       ) : app.growth < 0 ? (
-                        <TrendingDownIcon className="w-4 h-4" />
+                        <ArrowTrendingDownIcon className="w-4 h-4" />
                       ) : null}
                       <span>{Math.abs(app.growth)}%</span>
                     </div>

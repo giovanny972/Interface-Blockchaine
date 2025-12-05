@@ -59,6 +59,10 @@ export class FrontendSecurity {
 
   // Génération d'une empreinte d'appareil unique
   private generateDeviceFingerprint(): string {
+    if (typeof window === 'undefined') {
+      return CryptoJS.SHA256('server-side-fingerprint').toString()
+    }
+
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     if (ctx) {
@@ -84,6 +88,8 @@ export class FrontendSecurity {
 
   // Empreinte WebGL pour identification unique
   private getWebGLFingerprint(): string {
+    if (typeof window === 'undefined') return ''
+
     try {
       const canvas = document.createElement('canvas')
       const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
@@ -94,7 +100,7 @@ export class FrontendSecurity {
 
       const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
       const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-      
+
       return `${vendor}~${renderer}`
     } catch {
       return ''
@@ -103,6 +109,17 @@ export class FrontendSecurity {
 
   // Obtenir des informations sur l'appareil
   private getDeviceInfo() {
+    if (typeof window === 'undefined') {
+      return {
+        userAgent: 'server',
+        platform: 'server',
+        language: 'en',
+        timezone: 'UTC',
+        screen: '0x0',
+        timestamp: Date.now()
+      }
+    }
+
     return {
       userAgent: navigator.userAgent,
       platform: navigator.platform,
@@ -119,7 +136,7 @@ export class FrontendSecurity {
       const jsonData = JSON.stringify(data)
       const encrypted = CryptoJS.AES.encrypt(jsonData, this.encryptionKey).toString()
       return encrypted
-    } catch (error) {
+    } catch (error: any) {
       this.logSecurityEvent('encryption_error', 'high', { error: error.message })
       throw new Error('Erreur de chiffrement des données')
     }
@@ -134,7 +151,7 @@ export class FrontendSecurity {
         throw new Error('Données corrompues ou clé invalide')
       }
       return JSON.parse(jsonData)
-    } catch (error) {
+    } catch (error: any) {
       this.logSecurityEvent('decryption_error', 'high', { error: error.message })
       throw new Error('Erreur de déchiffrement des données')
     }
@@ -142,11 +159,13 @@ export class FrontendSecurity {
 
   // Stockage sécurisé dans localStorage
   public setSecureItem(key: string, value: any): void {
+    if (typeof window === 'undefined') return
+
     try {
       const encryptedValue = this.encryptLocalData(value)
       const secureKey = CryptoJS.SHA256(key + this.encryptionKey).toString()
       localStorage.setItem(secureKey, encryptedValue)
-    } catch (error) {
+    } catch (error: any) {
       this.logSecurityEvent('secure_storage_error', 'medium', { key, error: error.message })
       throw error
     }
@@ -154,13 +173,15 @@ export class FrontendSecurity {
 
   // Récupération sécurisée depuis localStorage
   public getSecureItem(key: string): any | null {
+    if (typeof window === 'undefined') return null
+
     try {
       const secureKey = CryptoJS.SHA256(key + this.encryptionKey).toString()
       const encryptedValue = localStorage.getItem(secureKey)
       if (!encryptedValue) return null
-      
+
       return this.decryptLocalData(encryptedValue)
-    } catch (error) {
+    } catch (error: any) {
       this.logSecurityEvent('secure_retrieval_error', 'medium', { key, error: error.message })
       return null
     }
@@ -168,6 +189,8 @@ export class FrontendSecurity {
 
   // Suppression sécurisée
   public removeSecureItem(key: string): void {
+    if (typeof window === 'undefined') return
+
     const secureKey = CryptoJS.SHA256(key + this.encryptionKey).toString()
     localStorage.removeItem(secureKey)
   }
@@ -289,9 +312,11 @@ export class FrontendSecurity {
     this.logSecurityEvent('session_locked', 'critical', {
       reason: 'Too many failed attempts'
     })
-    
+
     // Rediriger vers une page de sécurité
-    window.location.href = '/security-lockout'
+    if (typeof window !== 'undefined') {
+      window.location.href = '/security-lockout'
+    }
   }
 
   // Nettoyage sécurisé du stockage
@@ -311,8 +336,8 @@ export class FrontendSecurity {
       severity,
       timestamp: new Date(),
       details,
-      userAgent: navigator.userAgent,
-      url: window.location.href,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+      url: typeof window !== 'undefined' ? window.location.href : 'server',
       ip: undefined // Sera ajouté côté serveur si nécessaire
     }
 
@@ -358,23 +383,25 @@ export class FrontendSecurity {
 
   // Initialisation des écouteurs de sécurité
   private initializeSecurityListeners(): void {
-    // Détection de DevTools
-    let devtools = false
-    setInterval(() => {
-      if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
-        if (!devtools) {
-          devtools = true
-          this.logSecurityEvent('devtools_opened', 'medium', {})
-        }
-      } else {
-        devtools = false
-      }
-    }, 500)
+    if (typeof window === 'undefined') return
+
+    // Détection de DevTools (désactivé pour éviter les problèmes de performance)
+    // let devtools = false
+    // const devtoolsInterval = setInterval(() => {
+    //   if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
+    //     if (!devtools) {
+    //       devtools = true
+    //       this.logSecurityEvent('devtools_opened', 'medium', {})
+    //     }
+    //   } else {
+    //     devtools = false
+    //   }
+    // }, 500)
 
     // Détection de tentatives de débogage
     window.addEventListener('keydown', (event) => {
       // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-      if (event.key === 'F12' || 
+      if (event.key === 'F12' ||
           (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'J')) ||
           (event.ctrlKey && event.key === 'U')) {
         this.logSecurityEvent('debug_key_pressed', 'low', { key: event.key })
@@ -412,24 +439,27 @@ export class FrontendSecurity {
 
   // Monitoring de session
   private startSessionMonitoring(): void {
-    setInterval(() => {
-      const now = new Date()
-      const sessionDuration = now.getTime() - this.metrics.sessionStart.getTime()
-      
-      // Timeout de session
-      if (sessionDuration > this.sessionTimeout) {
-        this.logSecurityEvent('session_timeout', 'medium', { duration: sessionDuration })
-        this.clearSecureStorage()
-      }
+    if (typeof window === 'undefined') return
 
-      // Mise à jour de l'activité
-      this.metrics.lastActivity = now
+    // Désactivé en production pour éviter les problèmes de performance
+    // setInterval(() => {
+    //   const now = new Date()
+    //   const sessionDuration = now.getTime() - this.metrics.sessionStart.getTime()
 
-      // Vérification périodique d'activité suspecte
-      if (this.detectSuspiciousActivity()) {
-        this.logSecurityEvent('periodic_security_check_failed', 'high', {})
-      }
-    }, 60000) // Vérification chaque minute
+    //   // Timeout de session
+    //   if (sessionDuration > this.sessionTimeout) {
+    //     this.logSecurityEvent('session_timeout', 'medium', { duration: sessionDuration })
+    //     this.clearSecureStorage()
+    //   }
+
+    //   // Mise à jour de l'activité
+    //   this.metrics.lastActivity = now
+
+    //   // Vérification périodique d'activité suspecte
+    //   if (this.detectSuspiciousActivity()) {
+    //     this.logSecurityEvent('periodic_security_check_failed', 'high', {})
+    //   }
+    // }, 60000) // Vérification chaque minute
   }
 
   // Obtenir les métriques de sécurité
@@ -444,6 +474,19 @@ export class FrontendSecurity {
 
   // Protection contre les attaques XSS
   public sanitizeHTML(input: string): string {
+    if (typeof window === 'undefined') {
+      return input.replace(/[<>\"'&]/g, (char) => {
+        switch (char) {
+          case '<': return '&lt;'
+          case '>': return '&gt;'
+          case '"': return '&quot;'
+          case "'": return '&#39;'
+          case '&': return '&amp;'
+          default: return char
+        }
+      })
+    }
+
     const div = document.createElement('div')
     div.textContent = input
     return div.innerHTML
@@ -488,8 +531,8 @@ export class FrontendSecurity {
   }
 }
 
-// Instance globale de sécurité
-export const frontendSecurity = FrontendSecurity.getInstance()
+// Instance globale de sécurité (lazy initialization pour SSR)
+export const frontendSecurity = typeof window !== 'undefined' ? FrontendSecurity.getInstance() : null as any
 
 // Hook pour utilisation dans React
 export const useSecurityMetrics = () => {

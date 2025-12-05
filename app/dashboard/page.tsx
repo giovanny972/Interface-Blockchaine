@@ -28,6 +28,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard'
 import { SkeletonCard, SkeletonStats } from '@/components/ui/Skeleton'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { FaucetButton } from '@/components/FaucetButton'
 
 // Lazy load des composants non critiques
 const RecentActivity = lazy(() => import('@/components/dashboard/RecentActivity').then(module => ({ default: module.RecentActivity })))
@@ -50,7 +51,8 @@ function DashboardContent() {
     if (address && isAuthenticated) {
       updateBalance()
     }
-  }, [address, isAuthenticated, updateBalance])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, isAuthenticated])
 
   // Timeout de sécurité pour éviter les chargements infinis
   useEffect(() => {
@@ -229,7 +231,7 @@ function DashboardContent() {
         change: balanceChange,
         icon: ArrowTrendingUpIcon,
         color: 'text-secondary-500',
-        description: 'Capsule Network Token'
+        description: 'Sirius Network Token'
       }
     ]
   }, [userCapsules?.total, userCapsules?.items, balance])
@@ -275,7 +277,7 @@ function DashboardContent() {
                 <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
                   <CubeIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-bold text-xl text-gradient hidden sm:block">Capsule Network</span>
+                <span className="font-bold text-xl text-gradient hidden sm:block">Sirius Network</span>
               </Link>
               <div className="h-6 w-px bg-dark-600 hidden sm:block" />
               <h1 className="text-lg font-semibold text-white hidden sm:block">Dashboard</h1>
@@ -307,6 +309,9 @@ function DashboardContent() {
             Gérez vos capsules temporelles et suivez l'évolution de votre portefeuille.
           </p>
         </motion.div>
+
+        {/* Faucet Button - Nouveaux utilisateurs */}
+        <FaucetButton />
 
         {/* Quick Stats */}
         <motion.div
@@ -430,8 +435,8 @@ function DashboardContent() {
                   <p className="text-dark-400 mb-4">
                     {filter === 'all' ? 'Aucune capsule trouvée' : `Aucune capsule ${filter}`}
                   </p>
-                  <Link href="/capsules/create" className="btn-primary">
-                    <PlusIcon className="w-5 h-5 mr-2" />
+                  <Link href="/capsules/create" className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg hover:from-primary-600 hover:to-secondary-600 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    <PlusIcon className="w-4 h-4 mr-2" />
                     Créer ma première capsule
                   </Link>
                 </div>

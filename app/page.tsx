@@ -44,8 +44,8 @@ import {
 } from '@heroicons/react/24/outline'
 
 // Lazy load heavy sections
-const ValidatorSection = lazy(() => import('../components/sections/ValidatorSection'))
-const FooterSection = lazy(() => import('../components/sections/FooterSection'))
+const ValidatorSection = lazy(() => import('@/components/sections/ValidatorSection'))
+const FooterSection = lazy(() => import('@/components/sections/FooterSection'))
 
 export default function HomePage() {
   const { initializeWalletManager, isAuthenticated } = useAuth()
@@ -148,7 +148,7 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-xl text-dark-300 mb-10 max-w-3xl mx-auto leading-relaxed"
             >
-              Capsule Network est la première blockchain spécialisée dans les <strong className="text-gradient">capsules temporelles numériques</strong>. 
+              Sirius Network est la première blockchain spécialisée dans les <strong className="text-gradient">capsules temporelles numériques</strong>. 
               Construite sur Cosmos SDK avec le token natif <strong className="text-primary-400">TimeLoke (MTQ)</strong>, elle offre un chiffrement militaire AES-256-GCM 
               et des mécanismes de déclenchement programmables pour vos données les plus sensibles.
             </motion.p>
@@ -204,12 +204,110 @@ export default function HomePage() {
         <div className="absolute bottom-20 left-1/4 w-16 h-16 bg-success-500/10 rounded-full animate-float" style={{ animationDelay: '-4s' }} />
       </section>
 
+      {/* RWA Section - Tokenisation d'Actifs Réels - Version Compacte */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          {/* Background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            {/* Header Compact */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-primary-500/20 to-purple-500/20 border border-primary-500/30 mb-3">
+                <BanknotesIcon className="w-4 h-4 text-primary-400" />
+                <span className="text-xs font-semibold text-primary-400">NOUVEAU</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                Tokenisation <span className="text-gradient">RWA</span>
+              </h2>
+              <p className="text-lg text-dark-300 max-w-2xl mx-auto">
+                Transformez vos actifs réels en tokens échangeables. Immobilier, art, brevets, equity.
+              </p>
+            </div>
+
+            {/* Compact Features Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                viewport={{ once: true }}
+                className="card-dark text-center p-4 hover:border-blue-500/50 transition-all"
+              >
+                <BuildingOfficeIcon className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                <h3 className="text-sm font-semibold text-white">Immobilier</h3>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                viewport={{ once: true }}
+                className="card-dark text-center p-4 hover:border-purple-500/50 transition-all"
+              >
+                <BeakerIcon className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                <h3 className="text-sm font-semibold text-white">Brevets & IP</h3>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                viewport={{ once: true }}
+                className="card-dark text-center p-4 hover:border-pink-500/50 transition-all"
+              >
+                <SparklesIcon className="w-8 h-8 text-pink-400 mx-auto mb-2" />
+                <h3 className="text-sm font-semibold text-white">Art & NFTs</h3>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                viewport={{ once: true }}
+                className="card-dark text-center p-4 hover:border-green-500/50 transition-all"
+              >
+                <ArrowTrendingUpIcon className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                <h3 className="text-sm font-semibold text-white">Equity</h3>
+              </motion.div>
+            </div>
+
+            {/* CTA Compact */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <Link
+                href="/rwa"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-purple-500 rounded-lg font-semibold text-white hover:shadow-lg hover:shadow-primary-500/50 transition-all group text-sm"
+              >
+                Découvrir la Tokenisation RWA
+                <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </motion.div>
+          </motion.div>
+        </div>
+
+        {/* Floating decorations */}
+        <div className="absolute top-5 right-10 w-16 h-16 bg-primary-500/5 rounded-full blur-xl animate-float" />
+        <div className="absolute bottom-5 left-10 w-20 h-20 bg-purple-500/5 rounded-full blur-xl animate-float" style={{ animationDelay: '-3s' }} />
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-dark-900/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-6">
-              Pourquoi choisir <span className="text-gradient">Capsule Network</span> ?
+              Pourquoi choisir <span className="text-gradient">Sirius Network</span> ?
             </h2>
             <p className="text-xl text-dark-300 max-w-3xl mx-auto">
               Une technologie de pointe pour protéger vos données les plus sensibles avec des fonctionnalités uniques dans l'écosystème blockchain.
@@ -443,7 +541,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-6">
-              Comment fonctionne <span className="text-gradient">Capsule Network</span> ?
+              Comment fonctionne <span className="text-gradient">Sirius Network</span> ?
             </h2>
             <p className="text-xl text-dark-300 max-w-3xl mx-auto">
               Un processus simple en 4 étapes pour créer et gérer vos capsules temporelles en toute sécurité.
@@ -639,7 +737,7 @@ export default function HomePage() {
               Écosystème et <span className="text-gradient">Cas d'Usage</span>
             </h2>
             <p className="text-xl text-dark-300 max-w-3xl mx-auto">
-              De la succession numérique aux contrats d'entreprise, Capsule Network transforme 
+              De la succession numérique aux contrats d'entreprise, Sirius Network transforme 
               la façon dont nous gérons nos données les plus sensibles.
             </p>
           </div>
@@ -785,7 +883,7 @@ export default function HomePage() {
               >
                 <h3 className="text-2xl font-bold text-white mb-4">Intégrations B2B</h3>
                 <p className="text-dark-300 mb-6">
-                  SDKs complets et APIs REST pour intégrer facilement Capsule Network 
+                  SDKs complets et APIs REST pour intégrer facilement Sirius Network 
                   dans vos applications existantes.
                 </p>
                 <div className="space-y-3">
@@ -858,7 +956,7 @@ await capsule.create({
               Token <span className="text-gradient">TimeLoke (MTQ)</span>
             </h2>
             <p className="text-xl text-dark-300 max-w-3xl mx-auto">
-              Le token natif qui propulse l'écosystème Capsule Network avec des mécanismes 
+              Le token natif qui propulse l'écosystème Sirius Network avec des mécanismes 
               économiques durables et une gouvernance décentralisée.
             </p>
           </div>
@@ -1302,7 +1400,7 @@ await capsule.create({
             </h2>
             <p className="text-xl text-dark-300 max-w-3xl mx-auto">
               De la fondation technique au déploiement à grande échelle, découvrez les phases clés 
-              de l'évolution de Capsule Network.
+              de l'évolution de Sirius Network.
             </p>
           </div>
 

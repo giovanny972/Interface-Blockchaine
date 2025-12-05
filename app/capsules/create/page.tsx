@@ -7,7 +7,12 @@ import { useAuth, useTransaction } from '@/stores/authStore'
 import { CreateCapsuleForm, CapsuleType } from '@/types'
 import { useForm } from 'react-hook-form'
 import { capsuleAPI } from '@/lib/api'
-import { blockchainClient } from '@/lib/blockchain'
+import { timecapsuleTx } from '@/lib/timecapsule-tx'
+import { CapsuleTypeChain } from '@/types/timecapsule'
+
+// Force dynamic rendering to avoid SSR issues
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import {
   CubeIcon,
   ShieldCheckIcon,
@@ -18,7 +23,8 @@ import {
   DocumentArrowUpIcon,
   CalendarIcon,
   UsersIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { useNotificationStore, NotificationHelpers } from '@/stores/notificationStore'
@@ -140,140 +146,113 @@ export default function CreateCapsulePage() {
       return
     }
 
+    if (!wallet) {
+      toast.error('Veuillez vous connecter avec Keplr ou Leap')
+      router.push('/auth/connect')
+      return
+    }
+
     // Ajouter les cryptoassets au formulaire
     data.cryptoAssets = cryptoAssets
 
     setIsCreating(true)
-    
+
     try {
-      // 1. Upload du fichier si nécessaire
-      let fileData: ArrayBuffer | null = null
-      
-      if (selectedFile.size < 1024 * 1024) {
-        // Petit fichier: convertir en bytes pour stockage blockchain
-        fileData = await selectedFile.arrayBuffer()
-      } else {
-        // Gros fichier: upload vers IPFS d'abord
-        const uploadResult = await capsuleAPI.uploadToIPFS(selectedFile, {
-          title: data.title,
-          description: data.description,
-          capsuleType: data.type
-        })
-        
-        toast.success('Fichier uploadé sur IPFS')
-      }
+      // 1. Connexion au client timecapsule
+      toast.loading('Connexion à la blockchain...', { id: 'blockchain-connect' })
 
-      // 2. Préparer les messages de transaction pour la blockchain
-      const messages = []
-      
-      // Message principal de création de capsule
-      console.log('Simulation de création de capsule:', {
-        title: data.title,
-        type: data.type,
-        file: selectedFile.name,
-        size: selectedFile.size,
-        cryptoAssets: cryptoAssets.length > 0 ? cryptoAssets : 'aucune'
-      })
+      await timecapsuleTx.connect(wallet)
+      const address = await timecapsuleTx.getAddress()
 
-      // Si des cryptoassets sont ajoutés, créer les transactions de transfert
-      if (cryptoAssets.length > 0) {
-        toast.loading('Préparation des transferts de cryptomonnaies...', { id: 'crypto-transfer' })
-        
-        for (const asset of cryptoAssets) {
-          const transferMsg = {
-            typeUrl: '/cosmos.bank.v1beta1.MsgSend',
-            value: {
-              fromAddress: '', // Sera rempli par le wallet
-              toAddress: 'cosmos1capsule_vault_address', // Adresse de la capsule/vault (à remplacer)
-              amount: [{ denom: asset.denom, amount: asset.amount }]
-            }
-          }
-          messages.push(transferMsg)
-        }
-        
-        toast.success(`${cryptoAssets.length} cryptomonnaie(s) préparée(s) pour le transfert`, { id: 'crypto-transfer' })
-      }
+      toast.success('Connecté à la blockchain', { id: 'blockchain-connect' })
 
-      // Message symbolique de création de capsule (en attendant l'implémentation du module)
-      const capsuleMsg = {
-        typeUrl: '/cosmos.bank.v1beta1.MsgSend',
-        value: {
-          fromAddress: '', // Sera rempli par le wallet
-          toAddress: data.recipient || 'cosmos1u6mq76z7qtkpqd0y8whjjfe6epqxsp3a4dujxz',
-          amount: [{ denom: 'stake', amount: '1' }] // Transaction symbolique
-        }
-      }
-      messages.push(capsuleMsg)
-
-      // 3. Envoyer les transactions
-      const transactionMemo = cryptoAssets.length > 0 
-        ? `Création capsule: ${data.title} avec ${cryptoAssets.length} cryptomonnaie(s)`
-        : `Création capsule: ${data.title}`
-      
-      const result = await sendTransaction(
-        messages,
-        transactionMemo
-      )
-
-      // 4. Stocker les métadonnées et le fichier localement en attendant l'implémentation
-      const capsuleId = Date.now().toString()
-      const capsuleData = {
-        id: capsuleId,
-        title: data.title,
-        description: data.description,
-        type: data.type,
+      // 2. Préparer le contenu de la capsule
+      const fileContent = await selectedFile.arrayBuffer()
+      const contentData = {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
-        unlockTime: data.unlockTime,
-        createdAt: new Date(),
-        txHash: result.transactionHash,
-        isPublic: data.isPublic || false,
-        cryptoAssets: cryptoAssets,
-        totalCryptoValue: cryptoAssets.length > 0 ? calculateTotalCryptoValue(cryptoAssets) : 0
+        fileType: selectedFile.type,
+        data: Array.from(new Uint8Array(fileContent)),
+        cryptoAssets: cryptoAssets.length > 0 ? cryptoAssets : undefined
       }
-      
-      // Sauvegarder les métadonnées
-      localStorage.setItem(`capsule-${capsuleId}`, JSON.stringify(capsuleData))
-      
-      // Sauvegarder le fichier en base64 pour pouvoir le récupérer lors du déverrouillage
-      try {
-        const reader = new FileReader()
-        reader.onload = () => {
-          if (reader.result) {
-            localStorage.setItem(`capsule-file-${capsuleId}`, reader.result as string)
-            console.log('Fichier sauvegardé pour la capsule:', capsuleId)
-          }
-        }
-        reader.readAsDataURL(selectedFile)
-      } catch (error) {
-        console.warn('Impossible de sauvegarder le fichier:', error)
-      }
-      
-      console.log('Métadonnées sauvées localement:', capsuleData)
 
-      // Ajouter notification de création
-      const notificationMessage = cryptoAssets.length > 0 
-        ? `La capsule "${data.title}" a été créée avec ${cryptoAssets.length} cryptomonnaie(s) stockée(s)`
-        : `La capsule "${data.title}" a été créée avec succès`
-      
+      // 3. Mapper le type de capsule
+      const capsuleTypeMap: Record<CapsuleType, CapsuleTypeChain> = {
+        [CapsuleType.TIME_LOCK]: CapsuleTypeChain.TIME_LOCK,
+        [CapsuleType.SAFE]: CapsuleTypeChain.SAFE,
+        [CapsuleType.CONDITIONAL]: CapsuleTypeChain.CONDITIONAL,
+        [CapsuleType.SOCIAL_RECOVERY]: CapsuleTypeChain.SOCIAL_RECOVERY,
+        [CapsuleType.INHERITANCE]: CapsuleTypeChain.INHERITANCE,
+        [CapsuleType.SUBSCRIPTION]: CapsuleTypeChain.SUBSCRIPTION
+      }
+
+      // 4. Préparer les métadonnées
+      const metadata = JSON.stringify({
+        title: data.title,
+        description: data.description,
+        isPublic: data.isPublic || false,
+        createdAt: new Date().toISOString()
+      })
+
+      // 5. Créer la capsule sur la blockchain
+      toast.loading('Création de la capsule sur la blockchain...', { id: 'create-capsule' })
+
+      const result = await timecapsuleTx.createCapsule({
+        creator: address,
+        recipient: data.recipient || address,
+        content: new Uint8Array(Buffer.from(JSON.stringify(contentData))),
+        capsuleType: capsuleTypeMap[data.type],
+        unlockTime: data.unlockTime ? new Date(data.unlockTime) : undefined,
+        metadata,
+        threshold: data.threshold,
+        totalShares: data.totalShares,
+        condition: data.condition
+      })
+
+      toast.success('Capsule créée sur la blockchain !', { id: 'create-capsule' })
+
+      console.log('✅ Capsule créée:')
+      console.log('  - ID:', result.capsuleId)
+      console.log('  - Transaction:', result.transactionHash)
+      console.log('  - Block:', result.height)
+
+      // 6. Sauvegarder une référence locale pour le cache
+      const capsuleRef = {
+        id: result.capsuleId,
+        title: data.title,
+        type: data.type,
+        txHash: result.transactionHash,
+        blockHeight: result.height,
+        createdAt: new Date().toISOString()
+      }
+
+      const existingRefs = JSON.parse(localStorage.getItem('capsule-refs') || '[]')
+      localStorage.setItem('capsule-refs', JSON.stringify([...existingRefs, capsuleRef]))
+
+      // 7. Notification de succès
+      const notificationMessage = cryptoAssets.length > 0
+        ? `La capsule "${data.title}" a été créée sur la blockchain avec ${cryptoAssets.length} cryptomonnaie(s)`
+        : `La capsule "${data.title}" a été créée avec succès sur la blockchain`
+
       addNotification(NotificationHelpers.success('Capsule créée', notificationMessage))
 
-      const successMessage = cryptoAssets.length > 0 
-        ? `Capsule créée avec ${cryptoAssets.length} cryptomonnaie(s) stockée(s) !`
-        : 'Capsule créée avec succès !'
-      
+      const successMessage = cryptoAssets.length > 0
+        ? `Capsule créée avec ${cryptoAssets.length} cryptomonnaie(s) stockée(s) ! TX: ${result.transactionHash.slice(0, 8)}...`
+        : `Capsule créée ! TX: ${result.transactionHash.slice(0, 8)}...`
+
       toast.success(successMessage)
-      
-      // Rediriger vers le dashboard après un délai
+
+      // 8. Rediriger vers le dashboard
       setTimeout(() => {
         router.push('/dashboard')
       }, 2000)
 
     } catch (error: any) {
-      console.error('Erreur lors de la création:', error)
+      console.error('❌ Erreur lors de la création:', error)
       toast.error(error.message || 'Erreur lors de la création de la capsule')
     } finally {
       setIsCreating(false)
+      timecapsuleTx.disconnect()
     }
   }
 

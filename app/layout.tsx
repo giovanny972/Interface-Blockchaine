@@ -26,21 +26,27 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata = {
-  title: 'Capsule Network - Votre Coffre-Fort Temporel sur Blockchain',
-  description: 'Stockez, chiffrez et programmez la libération de vos données les plus précieuses avec Capsule Network. La première blockchain dédiée aux capsules temporelles sécurisées.',
-  keywords: 'blockchain, capsule temporelle, cryptographie, stockage sécurisé, Cosmos SDK, IPFS, Web3',
-  authors: [{ name: 'Capsule Network Team' }],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://sirius.network'),
+  title: {
+    default: 'Sirius Network - Votre Coffre-Fort Temporel sur Blockchain',
+    template: '%s | Sirius Network'
+  },
+  description: 'Stockez, chiffrez et programmez la libération de vos données avec Sirius Network. L\'étoile la plus brillante du stockage blockchain temporel sur Cosmos SDK.',
+  keywords: 'blockchain, sirius, time capsules, capsule temporelle, cryptographie, stockage sécurisé, Cosmos SDK, IPFS, Web3, RWA, tokenisation, actifs réels',
+  authors: [{ name: 'Sirius Network Team' }],
+  creator: 'Sirius Network',
+  publisher: 'Sirius Network',
   openGraph: {
-    title: 'Capsule Network - Blockchain de Capsules Temporelles',
-    description: 'Révolutionnez la façon dont vous stockez et partagez vos données importantes avec la technologie blockchain.',
-    url: 'https://capsule.network',
-    siteName: 'Capsule Network',
+    title: 'Sirius Network - L\'Étoile Gardienne des Capsules Temporelles',
+    description: 'Révolutionnez la façon dont vous stockez et partagez vos données avec Sirius Network sur blockchain.',
+    url: 'https://sirius.network',
+    siteName: 'Sirius Network',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Capsule Network - Blockchain Capsules Temporelles',
+        alt: 'Sirius Network - L\'Étoile Gardienne des Capsules Temporelles',
       },
     ],
     locale: 'fr_FR',
@@ -48,8 +54,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Capsule Network - Blockchain de Capsules Temporelles',
-    description: 'Stockez et programmez vos données de manière sécurisée avec la technologie blockchain.',
+    title: 'Sirius Network - L\'Étoile du Stockage Blockchain',
+    description: 'Stockez et programmez vos données de manière sécurisée avec Sirius Network.',
     images: ['/twitter-image.png'],
   },
   robots: {
@@ -82,13 +88,43 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
 
+        {/* DNS Prefetch pour les endpoints blockchain */}
+        <link rel="dns-prefetch" href="http://141.95.160.10" />
+
         {/* Métadonnées pour PWA */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="application-name" content="Capsule Network" />
+        <meta name="application-name" content="Sirius Network" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Capsule Network" />
+        <meta name="apple-mobile-web-app-title" content="Sirius Network" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+        {/* Structured Data pour SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebApplication',
+              name: 'Sirius Network',
+              description: 'L\'étoile la plus brillante du stockage blockchain temporel sur Cosmos SDK',
+              url: 'https://sirius.network',
+              applicationCategory: 'Blockchain Platform',
+              operatingSystem: 'Web',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'USD'
+              },
+              featureList: [
+                'Capsules Temporelles',
+                'Tokenisation RWA',
+                'Stockage Sécurisé',
+                'Blockchain Cosmos SDK'
+              ]
+            })
+          }}
+        />
       </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
         <ThemeProvider

@@ -150,33 +150,39 @@ export function CustomSelect({
   )
 }
 
-// Composant pour le scrollbar custom
-const customScrollbarStyles = `
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.3);
-    border-radius: 3px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.5);
-    border-radius: 3px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(59, 130, 246, 0.7);
-  }
-`
+// Injection des styles de scrollbar custom via un composant qui s'initialise côté client
+const InjectScrollbarStyles = () => {
+  useEffect(() => {
+    const customScrollbarStyles = `
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
 
-// Injection des styles dans le document
-if (typeof window !== 'undefined') {
-  const styleElement = document.createElement('style')
-  styleElement.textContent = customScrollbarStyles
-  if (!document.head.querySelector('style[data-custom-scrollbar]')) {
-    styleElement.setAttribute('data-custom-scrollbar', 'true')
-    document.head.appendChild(styleElement)
-  }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 0.3);
+        border-radius: 3px;
+      }
+
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.5);
+        border-radius: 3px;
+      }
+
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.7);
+      }
+    `
+
+    if (!document.head.querySelector('style[data-custom-scrollbar]')) {
+      const styleElement = document.createElement('style')
+      styleElement.textContent = customScrollbarStyles
+      styleElement.setAttribute('data-custom-scrollbar', 'true')
+      document.head.appendChild(styleElement)
+    }
+  }, [])
+
+  return null
 }
+
+// Exporter le composant pour l'initialisation
+export { InjectScrollbarStyles }

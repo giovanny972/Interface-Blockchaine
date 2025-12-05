@@ -6,21 +6,36 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  output: 'standalone',
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  // output: 'standalone',
   swcMinify: true,
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
   productionBrowserSourceMaps: false,
   optimizeFonts: true,
+
+  // Optimisations des images pour performance
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
+  },
+
+  // Optimisations du compilateur
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
+    reactRemoveProperties: process.env.NODE_ENV === 'production' ? { properties: ['^data-test'] } : false,
   },
+
+  // Optimisations expérimentales
   experimental: {
-    // Optimisations pour build plus rapide
     optimizeCss: false,
-    workerThreads: false,
-    cpus: 1,
+    optimizePackageImports: ['lucide-react', '@heroicons/react', 'framer-motion'],
   },
   webpack: (config, { isServer }) => {
     // Limiter l'utilisation mémoire

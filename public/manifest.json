@@ -1,6 +1,6 @@
 {
-  "name": "Capsule Network Interface",
-  "short_name": "Capsule",
+  "name": "Sirius Network Interface",
+  "short_name": "Sirius",
   "description": "Interface web moderne pour le système de capsule temporelle blockchain",
   "start_url": "/",
   "display": "standalone",
